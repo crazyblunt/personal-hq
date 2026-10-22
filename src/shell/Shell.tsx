@@ -7,6 +7,7 @@ import { MOD_KEY } from '../app/platform';
 import { navigate, SECTION_LABEL, useRoute } from '../app/router';
 import { openCapture, openCommand, setSidebarOpen, useUI } from '../app/ui';
 import { useHQ } from '../data/store';
+import { useSync } from '../sync/controller';
 import { formatClock, formatDuration } from '../lib/dates';
 import { cn } from '../lib/util';
 import { ColorSquare, Kbd } from '../ui/bits';
@@ -76,8 +77,9 @@ function TitleBar() {
 /** The status bar is hidden on small screens, so phones get a compact save light in the title bar. */
 function MobileSaveDot() {
   const { saveState, persistent } = useHQ(useShallow((s) => ({ saveState: s.saveState, persistent: s.persistent })));
-  const tone = !persistent || saveState === 'error' ? 'bg-bad-fill' : saveState === 'pending' ? 'bg-warn-fill' : 'bg-ok-fill';
-  const label = !persistent ? 'Not saved: storage blocked' : saveState === 'error' ? 'Save failed' : saveState === 'pending' ? 'Saving' : 'All changes saved';
+  const sync = useSync((s) => s.status);
+  const tone = !persistent || saveState === 'error' || sync === 'error' ? 'bg-bad-fill' : saveState === 'pending' || sync === 'offline' ? 'bg-warn-fill' : 'bg-ok-fill';
+  const label = !persistent ? 'Not saved: storage blocked' : saveState === 'error' ? 'Save failed' : sync === 'error' ? 'Saved here; sync problem (see Settings)' : sync === 'offline' ? 'Saved here; sync offline' : saveState === 'pending' ? 'Saving' : 'All changes saved';
   return (
     <span className="mr-1 flex items-center lg:hidden" role="status" aria-label={label} title={label}>
       <span className={cn('size-2', tone)} aria-hidden="true" />
@@ -215,6 +217,25 @@ function SaveIndicator() {
   );
 }
 
+function SyncIndicator() {
+  const { status, lastSyncAt, error } = useSync(useShallow((s) => ({ status: s.status, lastSyncAt: s.lastSyncAt, error: s.error })));
+  const clock24h = useHQ((s) => s.settings.clock24h);
+  if (status === 'off' || status === 'unavailable') return null;
+  const view =
+    status === 'syncing'
+      ? { tone: 'text-muted', text: 'Syncing…' }
+      : status === 'offline'
+        ? { tone: 'text-warn', text: 'Sync offline' }
+        : status === 'error'
+          ? { tone: 'text-bad', text: 'Sync problem' }
+          : { tone: 'text-muted', text: lastSyncAt ? `Synced ${formatClock(new Date(lastSyncAt), clock24h)}` : 'Sync on' };
+  return (
+    <button type="button" onClick={() => navigate('prefs')} className={cn('flex h-full items-center gap-1 bevel-in px-2', view.tone)} title={error ?? 'Sync between devices'}>
+      ⇅ {view.text}
+    </button>
+  );
+}
+
 function FocusIndicator() {
   const focus = useFocus();
   const now = useNow();
@@ -243,6 +264,7 @@ function StatusBar() {
           {c.overdue > 0 && <span className="text-bad"> · {c.overdue} overdue</span>} · {c.inbox} in inbox · {c.myday} for today
         </span>
       </div>
+      <SyncIndicator />
       <FocusIndicator />
       <div className="flex h-full items-center gap-1 bevel-in px-2">
         <Kbd>{MOD_KEY}</Kbd>

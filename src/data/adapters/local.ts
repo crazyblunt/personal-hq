@@ -15,6 +15,10 @@ export const META_KEY = `${PREFIX}meta`;
 export const SETTINGS_KEY = `${PREFIX}settings`;
 export const SNAPSHOT_KEY = `${PREFIX}snapshot`;
 export const RECOVERY_PREFIX = `${PREFIX}recovery:`;
+export const DAILY_PREFIX = `${PREFIX}daily:`;
+export const AUX_PREFIX = `${PREFIX}aux:`;
+/** How many daily snapshots to keep. */
+export const DAILY_KEEP = 7;
 const key = (name: CollectionName) => `${PREFIX}${name}`;
 
 interface Meta {
@@ -39,7 +43,25 @@ export function canUseLocalStorage(storage: Storage | undefined = globalThis.loc
 
 export class NewerDataError extends Error {}
 
-export function createLocalAdapter(storage: Storage = globalThis.localStorage): StorageAdapter {
+/** Parses a stored snapshot, dropping anything unreadable. */
+function parseSnapshot(s: string | null): Snapshot | null {
+  if (!s) return null;
+  try {
+    const v = JSON.parse(s);
+    if (!isObj(v) || !isObj(v.data) || typeof v.at !== 'string') return null;
+    const data = emptyWorkspace();
+    for (const name of COLLECTIONS) (data as unknown as Record<string, unknown>)[name] = normalizeCollection(name, v.data[name]).items;
+    data.settings = normalizeSettings(v.data.settings);
+    return { at: v.at, reason: typeof v.reason === 'string' ? v.reason : '', data };
+  } catch {
+    return null;
+  }
+}
+
+export function createLocalAdapter(
+  storage: Storage = globalThis.localStorage,
+  opts: { label?: string; kind?: StorageAdapter['kind'] } = {},
+): StorageAdapter {
   const write = (k: string, value: unknown) => storage.setItem(k, JSON.stringify(value));
 
   const stamp = () => new Date().toISOString().replace(/[:.]/g, '-');
@@ -130,7 +152,8 @@ export function createLocalAdapter(storage: Storage = globalThis.localStorage): 
   }
 
   return {
-    label: 'This browser',
+    label: opts.label ?? 'This browser',
+    kind: opts.kind ?? 'localStorage',
     persistent: true,
 
     async load() {
@@ -193,7 +216,7 @@ export function createLocalAdapter(storage: Storage = globalThis.localStorage): 
       let timer: ReturnType<typeof setTimeout> | undefined;
       const handler = (e: StorageEvent) => {
         if (e.storageArea !== storage || !e.key?.startsWith(PREFIX)) return;
-        if (e.key === SNAPSHOT_KEY || e.key.startsWith(RECOVERY_PREFIX)) return;
+        if (e.key === SNAPSHOT_KEY || e.key.startsWith(RECOVERY_PREFIX) || e.key.startsWith(DAILY_PREFIX) || e.key.startsWith(AUX_PREFIX)) return;
         clearTimeout(timer);
         timer = setTimeout(onChange, 80);
       };
@@ -209,18 +232,45 @@ export function createLocalAdapter(storage: Storage = globalThis.localStorage): 
     },
 
     async loadSnapshot() {
-      const s = storage.getItem(SNAPSHOT_KEY);
-      if (!s) return null;
+      return parseSnapshot(storage.getItem(SNAPSHOT_KEY));
+    },
+
+    async saveDailySnapshot(day, data) {
+      write(`${DAILY_PREFIX}${day}`, { at: new Date().toISOString(), reason: `daily snapshot ${day}`, data });
+      const days: string[] = [];
+      for (let i = 0; i < storage.length; i++) {
+        const k = storage.key(i);
+        if (k?.startsWith(DAILY_PREFIX)) days.push(k);
+      }
+      for (const old of days.sort().reverse().slice(DAILY_KEEP)) storage.removeItem(old);
+    },
+
+    async listDailySnapshots() {
+      const out: { key: string; day: string; size: number }[] = [];
+      for (let i = 0; i < storage.length; i++) {
+        const k = storage.key(i);
+        if (k?.startsWith(DAILY_PREFIX)) out.push({ key: k, day: k.slice(DAILY_PREFIX.length), size: storage.getItem(k)?.length ?? 0 });
+      }
+      return out.sort((a, b) => b.day.localeCompare(a.day));
+    },
+
+    async loadSnapshotByKey(k) {
+      return k === SNAPSHOT_KEY || k.startsWith(DAILY_PREFIX) ? parseSnapshot(storage.getItem(k)) : null;
+    },
+
+    async readAux(name) {
+      const s = storage.getItem(`${AUX_PREFIX}${name}`);
+      if (s === null) return null;
       try {
-        const v = JSON.parse(s);
-        if (!isObj(v) || !isObj(v.data) || typeof v.at !== 'string') return null;
-        const data = emptyWorkspace();
-        for (const name of COLLECTIONS) (data as unknown as Record<string, unknown>)[name] = normalizeCollection(name, v.data[name]).items;
-        data.settings = normalizeSettings(v.data.settings);
-        return { at: v.at, reason: typeof v.reason === 'string' ? v.reason : '', data };
+        return JSON.parse(s);
       } catch {
         return null;
       }
+    },
+
+    async writeAux(name, value) {
+      if (value === null) storage.removeItem(`${AUX_PREFIX}${name}`);
+      else write(`${AUX_PREFIX}${name}`, value);
     },
 
     async readLegacy() {

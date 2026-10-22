@@ -341,6 +341,8 @@ export interface Settings {
   countdowns: Countdown[];
   focusMinutes: number;
   breakMinutes: number;
+  /** When settings last changed, so sync can keep the newest copy. */
+  updatedAt?: string;
 }
 
 /* ---------- Workspace ---------- */

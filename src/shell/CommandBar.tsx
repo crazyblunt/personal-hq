@@ -21,12 +21,11 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useToday } from '../app/clock';
-import { saveTextFile } from '../app/fileSave';
+import { downloadBackup } from '../app/backupActions';
 import { toggleFocus, useFocus } from '../app/focus';
 import { navigate } from '../app/router';
 import { closeCommand, openCapture, openEditor, openOrganize, toast, useUI } from '../app/ui';
-import { buildExport, exportFilename } from '../data/backup';
-import { createIdea, createNote, createProject, createTask, ideaTitle, updateSettings, useHQ, workspaceSnapshot } from '../data/store';
+import { createIdea, createNote, createProject, createTask, ideaTitle, updateSettings, useHQ } from '../data/store';
 import { THEMES, THEME_LABEL } from '../data/types';
 import { formatDate, relativeDay } from '../lib/dates';
 import { parseQuickTask } from '../lib/quickAdd';
@@ -91,7 +90,7 @@ function useStaticCommands(): CommandItem[] {
         icon: Download,
         keywords: 'download save json',
         run: async () => {
-          const outcome = await saveTextFile(exportFilename(), JSON.stringify(buildExport(workspaceSnapshot()), null, 2));
+          const outcome = await downloadBackup();
           if (outcome === 'saved') toast('Backup saved');
           else if (outcome === 'unavailable') {
             toast('Downloads are not available here. Use Copy JSON in Settings › Data.', 'error');

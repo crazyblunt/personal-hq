@@ -10,6 +10,7 @@ import { Button, Check, Field, Select } from '../../ui/controls';
 import { WIDGETS } from '../myday/widgets';
 import { NAV_ITEMS } from '../../shell/nav';
 import { DataSection } from './DataSection';
+import { SyncPanel } from './SyncPanel';
 
 /** Small swatch previews: desk, panel, bar, text. */
 const THEME_SWATCH: Record<ThemeName, string[]> = {
@@ -177,6 +178,7 @@ export function SettingsPage() {
         </div>
 
         <div className="flex flex-col gap-2">
+          <SyncPanel />
           <DataSection />
           <Panel title="Organization helpers" icon={<Bot />}>
             <div className="flex flex-col gap-2 p-2 text-sm">

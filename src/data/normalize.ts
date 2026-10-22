@@ -409,5 +409,6 @@ export function normalizeSettings(v: unknown): Settings {
     countdowns: countdowns(v.countdowns),
     focusMinutes: Math.min(180, Math.max(1, Math.round(num(v, 'focusMinutes', d.focusMinutes)))),
     breakMinutes: Math.min(60, Math.max(1, Math.round(num(v, 'breakMinutes', d.breakMinutes)))),
+    ...(typeof v.updatedAt === 'string' ? { updatedAt: v.updatedAt } : {}),
   };
 }

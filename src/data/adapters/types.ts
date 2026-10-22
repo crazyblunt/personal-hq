@@ -37,6 +37,8 @@ export interface RecoveryEntry {
  */
 export interface StorageAdapter {
   readonly label: string;
+  /** Where the data physically lives, for the Settings › Data page. */
+  readonly kind?: 'indexeddb' | 'localStorage' | 'memory';
   /** False when data only lives until the page closes. */
   readonly persistent: boolean;
   load(): Promise<LoadedWorkspace>;
@@ -48,6 +50,13 @@ export interface StorageAdapter {
   /** One safety copy, taken before imports and full resets. */
   saveSnapshot?(snapshot: Snapshot): Promise<void>;
   loadSnapshot?(): Promise<Snapshot | null>;
+  /** Automatic once-a-day copies; only the most recent few are kept. */
+  saveDailySnapshot?(day: string, data: WorkspaceData): Promise<void>;
+  listDailySnapshots?(): Promise<{ key: string; day: string; size: number }[]>;
+  loadSnapshotByKey?(key: string): Promise<Snapshot | null>;
+  /** Small side records that are not workspace data (for example sync state). `null` deletes. */
+  readAux?(name: string): Promise<unknown>;
+  writeAux?(name: string, value: unknown): Promise<void>;
   /** Agent Command Center data still present in this storage, converted, or null. */
   readLegacy?(): Promise<LegacyConversion | null>;
   listRecovery?(): Promise<RecoveryEntry[]>;

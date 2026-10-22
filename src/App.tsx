@@ -4,6 +4,9 @@ import { startClock } from './app/clock';
 import { readDevice, writeDevice } from './app/deviceStorage';
 import { flushDrafts } from './app/drafts';
 import { insideArtifactHost } from './app/fileSave';
+import { downloadBackup } from './app/backupActions';
+import { backupDue, snoozeBackupReminder, totalRecords, useStorageHealth } from './app/safety';
+import { useMinuteNow } from './app/clock';
 import { isTypingTarget } from './app/platform';
 import { navigate, startRouter, useRoute } from './app/router';
 import { anyModalOpen, closeCommand, openCapture, openCommand, useUI } from './app/ui';
@@ -27,6 +30,7 @@ import { NAV_ITEMS } from './shell/nav';
 import { Shell } from './shell/Shell';
 import { ConfirmHost } from './ui/Dialog';
 import { cn } from './lib/util';
+import { relativeTime } from './lib/dates';
 
 const PAGES: Record<SectionId, () => JSX.Element> = {
   myday: MyDayPage,
@@ -180,6 +184,50 @@ function MoveDataHint() {
   );
 }
 
+/** Nudges you to download a backup when it has been a while. */
+function BackupReminder() {
+  const now = useMinuteNow();
+  const lastBackupAt = useStorageHealth((s) => s.lastBackupAt);
+  const records = useHQ((s) => (s.status === 'ready' ? totalRecords() : 0));
+  const [hidden, setHidden] = useState(false);
+  const due = backupDue(now, {
+    lastBackupAt,
+    firstSeen: readDevice<string | null>('first-seen', null),
+    snoozedUntil: readDevice<string | null>('backup-snooze', null),
+    syncOn: readDevice<boolean>('sync-on', false),
+    records,
+  });
+  if (!due || hidden) return null;
+  return (
+    <div role="status" className="mb-2 flex flex-wrap items-center gap-2 border border-warn-fill bg-warn-fill/15 px-2 py-1.5 text-sm">
+      <CircleAlert className="size-3.5 shrink-0 text-warn" aria-hidden="true" />
+      <span className="min-w-0 flex-1">
+        {lastBackupAt ? `Your last backup was ${relativeTime(lastBackupAt)}.` : 'You haven’t downloaded a backup on this device yet.'} Your data lives in this browser, so keep a copy somewhere safe.
+      </span>
+      <button
+        type="button"
+        className="bevel-out bg-raised px-2 py-0.5 text-xs hover:bg-raised-hover"
+        onClick={async () => {
+          const outcome = await downloadBackup();
+          if (outcome === 'unavailable') navigate('prefs');
+        }}
+      >
+        Download backup
+      </button>
+      <button
+        type="button"
+        className="px-1 text-xs text-muted hover:text-fg"
+        onClick={() => {
+          snoozeBackupReminder();
+          setHidden(true);
+        }}
+      >
+        Remind me in 3 days
+      </button>
+    </div>
+  );
+}
+
 export function App() {
   const status = useHQ((s) => s.status);
   const loadError = useHQ((s) => s.loadError);
@@ -242,6 +290,7 @@ export function App() {
       <Shell>
         <LoadNotices />
         <MoveDataHint />
+        <BackupReminder />
         <Page />
       </Shell>
       <EditorHost />

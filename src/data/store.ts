@@ -36,6 +36,7 @@ export interface HQState extends WorkspaceData {
   status: 'loading' | 'ready' | 'error';
   loadError: string | null;
   storageLabel: string;
+  storageKind: NonNullable<StorageAdapter['kind']>;
   persistent: boolean;
   saveState: SaveState;
   lastSavedAt: string | null;
@@ -50,6 +51,7 @@ export const useHQ = create<HQState>(() => ({
   status: 'loading',
   loadError: null,
   storageLabel: '',
+  storageKind: 'memory',
   persistent: false,
   saveState: 'idle',
   lastSavedAt: null,
@@ -87,7 +89,7 @@ export async function initStore(next: StorageAdapter): Promise<void> {
   clearTimeout(flushTimer);
   dirty.clear();
   adapter = next;
-  set({ status: 'loading', storageLabel: next.label, persistent: next.persistent, loadError: null });
+  set({ status: 'loading', storageLabel: next.label, storageKind: next.kind ?? 'localStorage', persistent: next.persistent, loadError: null });
   try {
     const loaded = await next.load();
     set({
@@ -175,10 +177,67 @@ function patch<K extends CollectionName>(name: K, id: string, change: Partial<It
   return next;
 }
 
+/* ---------- Change hooks (used by sync) ---------- */
+
+export interface RemovedRecord {
+  collection: CollectionName;
+  id: string;
+}
+
+const deleteListeners = new Set<(removed: RemovedRecord[]) => void>();
+
+/** Called with every record the user deletes on this device. */
+export function onLocalDelete(fn: (removed: RemovedRecord[]) => void): () => void {
+  deleteListeners.add(fn);
+  return () => deleteListeners.delete(fn);
+}
+
+function emitDeletes(removed: RemovedRecord[]) {
+  if (removed.length) for (const fn of deleteListeners) fn(removed);
+}
+
 function removeWhere<K extends CollectionName>(name: K, pred: (r: Item<K>) => boolean): Item<K>[] {
   const removed = list(name).filter(pred);
-  if (removed.length) setList(name, list(name).filter((r) => !pred(r)));
+  if (removed.length) {
+    setList(name, list(name).filter((r) => !pred(r)));
+    emitDeletes(removed.map((r) => ({ collection: name, id: r.id })));
+  }
   return removed;
+}
+
+export interface RemoteChange {
+  collection: CollectionName;
+  id: string;
+  /** The record to store, or null when it was deleted elsewhere. */
+  record: unknown | null;
+}
+
+/**
+ * Applies changes that arrived from another device. They are saved like any
+ * edit but are not logged as activity here (the other device logged them)
+ * and do not count as local deletions.
+ */
+export function applyRemoteChanges(changes: RemoteChange[], settings?: Settings) {
+  const touched = new Set<CollectionName>();
+  const next: Partial<Record<CollectionName, unknown[]>> = {};
+  for (const c of changes) {
+    const current = (next[c.collection] ?? [...list(c.collection)]) as { id: string }[];
+    const i = current.findIndex((r) => r.id === c.id);
+    if (c.record === null) {
+      if (i !== -1) current.splice(i, 1);
+    } else if (i === -1) current.push(c.record as { id: string });
+    else current[i] = c.record as { id: string };
+    next[c.collection] = current;
+    touched.add(c.collection);
+  }
+  if (touched.has('activity')) {
+    const sorted = (next.activity as ActivityEntry[]).sort((a, b) => a.at.localeCompare(b.at));
+    if (sorted.length > ACTIVITY_LIMIT) next.activity = sorted.slice(sorted.length - ACTIVITY_LIMIT);
+  }
+  const update: Partial<HQState> = { ...(next as Partial<HQState>) };
+  if (settings) update.settings = settings;
+  set(update);
+  markDirty(...touched, ...(settings ? (['settings'] as const) : []));
 }
 
 function stamp() {
@@ -632,7 +691,7 @@ export function logFocusSession(minutes: number, taskId: string | null) {
 /* ---------- Settings ---------- */
 
 export function updateSettings(changes: Partial<Settings>) {
-  set({ settings: { ...get().settings, ...changes } });
+  set({ settings: { ...get().settings, ...changes, updatedAt: nowIso() } });
   markDirty('settings');
 }
 
@@ -645,6 +704,12 @@ export function updateSettings(changes: Partial<Settings>) {
  */
 export async function replaceWorkspace(data: WorkspaceData, reason: string, opts: { snapshot?: boolean } = {}) {
   await flush();
+  // Records that disappear count as deletions, so sync removes them on other devices too.
+  const removed: RemovedRecord[] = [];
+  for (const n of COLLECTIONS) {
+    const keep = new Set((data[n] as { id: string }[]).map((r) => r.id));
+    for (const r of get()[n] as { id: string }[]) if (!keep.has(r.id)) removed.push({ collection: n, id: r.id });
+  }
   if (opts.snapshot !== false && adapter.saveSnapshot) {
     try {
       await adapter.saveSnapshot({ at: nowIso(), reason, data: workspaceSnapshot() });
@@ -652,9 +717,10 @@ export async function replaceWorkspace(data: WorkspaceData, reason: string, opts
       throw new Error(`Couldn't save a safety copy first (${errorMessage(e)}). Nothing was changed. Export a backup, then try again.`);
     }
   }
-  set({ ...data });
+  set({ ...data, settings: { ...data.settings, updatedAt: nowIso() } });
+  emitDeletes(removed);
   try {
-    await adapter.replaceAll(data);
+    await adapter.replaceAll({ ...data, settings: get().settings });
     set({ saveState: 'saved', lastSavedAt: nowIso(), saveError: null });
   } catch (e) {
     for (const n of COLLECTIONS) dirty.add(n);

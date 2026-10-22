@@ -1,14 +1,17 @@
 import { Copy, Download, HardDrive, History, LifeBuoy, Trash2, Upload } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { copyToClipboard, insideArtifactHost, saveTextFile } from '../../app/fileSave';
+import { copyBackup, downloadBackup } from '../../app/backupActions';
+import { copyToClipboard, insideArtifactHost } from '../../app/fileSave';
+import { requestPersistence, refreshStorageEstimate, useStorageHealth } from '../../app/safety';
 import { confirmAction, toast } from '../../app/ui';
 import type { RecoveryEntry, Snapshot } from '../../data/adapters/types';
-import { applyImport, buildExport, countsOf, exportFilename, ImportError, parseImport, type ParsedImport } from '../../data/backup';
+import { applyImport, countsOf, ImportError, parseImport, type ParsedImport } from '../../data/backup';
 import { emptyWorkspace } from '../../data/defaults';
 import type { LegacyConversion } from '../../data/legacy';
 import { getAdapter, logActivity, replaceWorkspace, useHQ, workspaceSnapshot } from '../../data/store';
 import { COLLECTIONS, COLLECTION_LABEL, SCHEMA_VERSION } from '../../data/types';
+import { formatDate, relativeTime } from '../../lib/dates';
 import { errorMessage } from '../../lib/util';
 import { Panel } from '../../ui/bits';
 import { Button, Input } from '../../ui/controls';
@@ -17,10 +20,19 @@ import { ImportDialog } from './ImportDialog';
 
 const MAX_IMPORT_BYTES = 25 * 1024 * 1024;
 
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 ** 2) return `${(n / 1024).toFixed(0)} KB`;
+  if (n < 1024 ** 3) return `${(n / 1024 ** 2).toFixed(1)} MB`;
+  return `${(n / 1024 ** 3).toFixed(1)} GB`;
+}
+
 export function DataSection() {
-  const { storageLabel, persistent, saveState, saveError, lastSavedAt } = useHQ(
-    useShallow((s) => ({ storageLabel: s.storageLabel, persistent: s.persistent, saveState: s.saveState, saveError: s.saveError, lastSavedAt: s.lastSavedAt })),
+  const { storageLabel, storageKind, persistent, saveState, saveError, lastSavedAt } = useHQ(
+    useShallow((s) => ({ storageLabel: s.storageLabel, storageKind: s.storageKind, persistent: s.persistent, saveState: s.saveState, saveError: s.saveError, lastSavedAt: s.lastSavedAt })),
   );
+  const health = useStorageHealth();
+  const [daily, setDaily] = useState<{ key: string; day: string; size: number }[]>([]);
   const counts = useHQ(useShallow((s) => COLLECTIONS.map((n) => s[n].length)));
   const fileRef = useRef<HTMLInputElement>(null);
   const [importError, setImportError] = useState<string | null>(null);
@@ -36,16 +48,16 @@ export function DataSection() {
     setSnapshot((await a.loadSnapshot?.()) ?? null);
     setLegacy((await a.readLegacy?.()) ?? null);
     setRecovery((await a.listRecovery?.()) ?? []);
+    setDaily((await a.listDailySnapshots?.()) ?? []);
+    void refreshStorageEstimate();
   };
   useEffect(() => {
     void refresh();
   }, [pending, wipeOpen]);
 
-  const exportJson = () => JSON.stringify(buildExport(workspaceSnapshot()), null, 2);
-
   const download = async () => {
     setExportNote(null);
-    const outcome = await saveTextFile(exportFilename(), exportJson());
+    const outcome = await downloadBackup();
     if (outcome === 'saved') toast('Backup saved');
     else if (outcome === 'declined') toast('Download cancelled', 'info');
     else {
@@ -79,7 +91,33 @@ export function DataSection() {
         <div className="flex flex-col gap-2 p-2">
           <dl className="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-2 gap-y-1 font-mono text-xs">
             <dt className="text-subtle uppercase">Location</dt>
-            <dd>{storageLabel} (localStorage)</dd>
+            <dd>
+              {storageLabel} ({storageKind === 'indexeddb' ? 'IndexedDB' : storageKind === 'localStorage' ? 'localStorage, about 5 MB' : 'memory only'})
+            </dd>
+            <dt className="text-subtle uppercase">Protection</dt>
+            <dd className={health.persisted ? 'text-ok' : health.persisted === false ? 'text-warn' : 'text-muted'}>
+              {health.persisted
+                ? 'Protected: the browser won’t clear it on its own'
+                : health.persisted === false
+                  ? 'Not protected: the browser may clear it if space runs low or it goes unused'
+                  : 'Unknown in this browser'}
+              {health.persisted === false && (
+                <button type="button" className="ml-2 text-accent underline" onClick={() => void requestPersistence()}>
+                  Ask again
+                </button>
+              )}
+            </dd>
+            {health.usage !== null && (
+              <>
+                <dt className="text-subtle uppercase">Space used</dt>
+                <dd>
+                  {formatBytes(health.usage)}
+                  {health.quota ? ` of ${formatBytes(health.quota)} available` : ''}
+                </dd>
+              </>
+            )}
+            <dt className="text-subtle uppercase">Last backup</dt>
+            <dd className={health.lastBackupAt ? '' : 'text-warn'}>{health.lastBackupAt ? `${relativeTime(health.lastBackupAt)} (${new Date(health.lastBackupAt).toLocaleDateString()})` : 'Never downloaded on this device'}</dd>
             <dt className="text-subtle uppercase">Status</dt>
             <dd className={!persistent || saveState === 'error' ? 'text-bad' : 'text-ok'}>
               {!persistent ? 'Not saved: browser storage is blocked here' : saveState === 'error' ? saveError : lastSavedAt ? `Saved on every change · last ${new Date(lastSavedAt).toLocaleTimeString()}` : 'Saved on every change'}
@@ -111,7 +149,7 @@ export function DataSection() {
           </div>
           <p className="text-sm text-muted">
             {persistent
-              ? 'Everything is stored in this browser only. It survives reloads but does not sync to other browsers or devices, and clearing site data erases it. Export a backup regularly.'
+              ? 'Everything is stored in this browser. It survives reloads, but clearing site data erases it, so download a backup regularly. Installing the app makes the browser less likely to clear it.'
               : 'Browser storage is blocked here, so your data only lasts until this page closes. Export it to keep it.'}
           </p>
         </div>
@@ -125,7 +163,7 @@ export function DataSection() {
             </Button>
             <Button
               onClick={async () => {
-                const ok = await copyToClipboard(exportJson());
+                const ok = await copyBackup();
                 toast(ok ? 'Backup JSON copied to the clipboard' : 'Couldn’t reach the clipboard here', ok ? 'success' : 'error');
               }}
             >
@@ -155,6 +193,41 @@ export function DataSection() {
             </p>
           )}
           <p className="text-xs text-subtle">Imports accept Personal HQ and Agent Command Center backups. You see a preview first; the default adds new records and never overwrites existing ones.</p>
+          {daily.length > 0 && (
+            <div className="flex flex-col gap-1 border-t border-line pt-2 text-sm">
+              <span className="font-mono text-2xs tracking-wider text-muted uppercase">Daily snapshots on this device (last {daily.length})</span>
+              <ul className="border border-line bg-inset">
+                {daily.map((d) => (
+                  <li key={d.key} className="flex items-center gap-2 border-b border-line px-2 py-1 last:border-b-0">
+                    <History className="size-3.5 shrink-0 text-subtle" aria-hidden="true" />
+                    <span className="min-w-0 flex-1">{formatDate(d.day, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                    {d.size > 0 && <span className="font-mono text-2xs text-subtle">{formatBytes(d.size)}</span>}
+                    <Button
+                      size="xs"
+                      onClick={() =>
+                        confirmAction({
+                          title: `Restore the snapshot from ${formatDate(d.day, { month: 'long', day: 'numeric' })}?`,
+                          body: 'Your workspace goes back to how it was when this snapshot was taken. Changes made since are lost, but the current data becomes the safety copy you can restore right after.',
+                          confirmLabel: 'Restore snapshot',
+                          onConfirm: async () => {
+                            const snap = await getAdapter().loadSnapshotByKey?.(d.key);
+                            if (!snap) throw new Error('That snapshot could not be read.');
+                            await replaceWorkspace(snap.data, `restore of the ${d.day} snapshot`);
+                            logActivity({ action: 'restored', entity: 'workspace', entityId: '', title: 'Daily snapshot', detail: `Restored data from ${d.day}` });
+                            toast('Snapshot restored');
+                            void refresh();
+                          },
+                        })
+                      }
+                    >
+                      Restore
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-subtle">Taken automatically the first time you open the app each day. They protect against mistakes, not against clearing the browser’s data, so keep downloading backups too.</p>
+            </div>
+          )}
           {snapshot && (
             <div className="flex flex-wrap items-center gap-2 border-t border-line pt-2 text-sm">
               <History className="size-3.5 text-muted" aria-hidden="true" />
