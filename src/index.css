@@ -1,0 +1,267 @@
+@import 'tailwindcss';
+
+/*
+ * Personal HQ visual system: an early-2000s desktop utility.
+ * Layout: title bar / sidebar tree / workspace of framed panels / status bar.
+ * Surfaces are bevelled gray-charcoal; accents are muted green, amber, purple.
+ *
+ * Every color is a token. Themes (data-hq-theme), accents (data-hq-accent)
+ * and density (data-hq-density) only redefine tokens, never component rules.
+ * The default look is dark Charcoal, so dark values sit on bare :root.
+ */
+:root {
+  color-scheme: dark;
+  --desk: #1f2022;
+  --monitor: #111213;
+  --inset: #17181a;
+  --panel: #2a2b2e;
+  --bar: #333539;
+  --raised: #3a3c40;
+  --raised-hover: #44464b;
+  --line: #3e4146;
+  --line-strong: #565a60;
+  --hi: #5b5e64;
+  --lo: #0b0c0d;
+  --fg: #d8d9d5;
+  --muted: #a3a6a0;
+  --subtle: #787c78;
+
+  --ok: #9cc98c;
+  --ok-fill: #4f7a45;
+  --warn: #e0b45c;
+  --warn-fill: #8a6420;
+  --bad: #e8918a;
+  --bad-fill: #8f3d36;
+  --info: #94b4dc;
+  --info-fill: #3f6491;
+  --purple: #b6a6e8;
+  --purple-fill: #5d4f8c;
+  --orange: #e6a06a;
+  --orange-fill: #8f5428;
+
+  --accent: #9cc98c;
+  --accent-face: #4f7a45;
+  --accent-ink: #ffffff;
+
+  /* Activity chart series, validated for color-vision deficiency on both surfaces. */
+  --chart-done: #5aa04a;
+  --chart-new: #7c60bd;
+  --chart-other: #c68427;
+
+  --font-ui: Tahoma, Verdana, 'Segoe UI', 'DejaVu Sans', sans-serif;
+  --font-code: 'IBM Plex Mono', Consolas, 'Lucida Console', Menlo, 'DejaVu Sans Mono', monospace;
+  --density: 15px;
+}
+
+/* ---------- Themes ---------- */
+
+:root[data-hq-theme='graphite'] {
+  --desk: #1b1d21; --monitor: #0e1013; --inset: #14161a; --panel: #24272c; --bar: #2d3137;
+  --raised: #353a41; --raised-hover: #3f454d; --line: #383d45; --line-strong: #4f5661;
+  --hi: #565d68; --lo: #08090b; --fg: #d5d9df; --muted: #9ca3ad; --subtle: #737a85;
+}
+
+:root[data-hq-theme='phosphor'] {
+  --desk: #0b0e0b; --monitor: #050605; --inset: #080a08; --panel: #111511; --bar: #172017;
+  --raised: #1c251c; --raised-hover: #243024; --line: #243024; --line-strong: #35463a;
+  --hi: #33433a; --lo: #000000; --fg: #bcdcb2; --muted: #86a67e; --subtle: #5f7c5a;
+}
+
+:root[data-hq-theme='amber'] {
+  --desk: #14100b; --monitor: #080604; --inset: #0e0b07; --panel: #1b1610; --bar: #231c13;
+  --raised: #2a2218; --raised-hover: #342a1d; --line: #33291c; --line-strong: #4a3c29;
+  --hi: #4a3c2a; --lo: #000000; --fg: #ead2a2; --muted: #b99d6b; --subtle: #86724f;
+}
+
+/* Classic gray: the light platinum desktop. Semantic colors darken for contrast. */
+:root[data-hq-theme='classic'] {
+  color-scheme: light;
+  --desk: #aeaea8; --monitor: #f4f3ee; --inset: #ffffff; --panel: #d6d5d0; --bar: #c4c3bd;
+  --raised: #dddcd6; --raised-hover: #e8e7e1; --line: #9c9b95; --line-strong: #7c7b76;
+  --hi: #ffffff; --lo: #5f5e5a; --fg: #1a1a19; --muted: #45453f; --subtle: #66655f;
+  --ok: #2f6326; --warn: #7a5410; --bad: #9b2f27; --info: #2b5287; --purple: #4f3f86; --orange: #8a4a17;
+  --accent: color-mix(in oklab, var(--accent-face), black 22%);
+  --chart-done: #3f842e; --chart-new: #6b4cae; --chart-other: #b77610;
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-hq-theme='auto']:not([data-theme='dark']) {
+    color-scheme: light;
+    --desk: #aeaea8; --monitor: #f4f3ee; --inset: #ffffff; --panel: #d6d5d0; --bar: #c4c3bd;
+    --raised: #dddcd6; --raised-hover: #e8e7e1; --line: #9c9b95; --line-strong: #7c7b76;
+    --hi: #ffffff; --lo: #5f5e5a; --fg: #1a1a19; --muted: #45453f; --subtle: #66655f;
+    --ok: #2f6326; --warn: #7a5410; --bad: #9b2f27; --info: #2b5287; --purple: #4f3f86; --orange: #8a4a17;
+    --accent: color-mix(in oklab, var(--accent-face), black 22%);
+    --chart-done: #3f842e; --chart-new: #6b4cae; --chart-other: #b77610;
+  }
+}
+:root[data-hq-theme='auto'][data-theme='light'] {
+  color-scheme: light;
+  --desk: #aeaea8; --monitor: #f4f3ee; --inset: #ffffff; --panel: #d6d5d0; --bar: #c4c3bd;
+  --raised: #dddcd6; --raised-hover: #e8e7e1; --line: #9c9b95; --line-strong: #7c7b76;
+  --hi: #ffffff; --lo: #5f5e5a; --fg: #1a1a19; --muted: #45453f; --subtle: #66655f;
+  --ok: #2f6326; --warn: #7a5410; --bad: #9b2f27; --info: #2b5287; --purple: #4f3f86; --orange: #8a4a17;
+  --accent: color-mix(in oklab, var(--accent-face), black 22%);
+  --chart-done: #3f842e; --chart-new: #6b4cae; --chart-other: #b77610;
+}
+
+/* ---------- Accents ---------- */
+
+:root[data-hq-accent='green'] { --accent-face: #4f7a45; --accent: #9cc98c; }
+:root[data-hq-accent='amber'] { --accent-face: #8a6420; --accent: #e0b45c; }
+:root[data-hq-accent='purple'] { --accent-face: #5d4f8c; --accent: #b6a6e8; }
+:root[data-hq-accent='blue'] { --accent-face: #3f6491; --accent: #94b4dc; }
+:root[data-hq-accent='teal'] { --accent-face: #2f716c; --accent: #86c4bd; }
+:root[data-hq-accent='rust'] { --accent-face: #8c4a32; --accent: #e09a7a; }
+
+:root[data-hq-theme='classic'][data-hq-accent],
+:root[data-hq-theme='auto'][data-theme='light'][data-hq-accent] {
+  --accent: color-mix(in oklab, var(--accent-face), black 22%);
+}
+@media (prefers-color-scheme: light) {
+  :root[data-hq-theme='auto']:not([data-theme='dark'])[data-hq-accent] {
+    --accent: color-mix(in oklab, var(--accent-face), black 22%);
+  }
+}
+
+/* ---------- Density: all sizes are rem, so the root size scales the whole UI ---------- */
+
+:root[data-hq-density='comfortable'] { --density: 16.5px; }
+
+@theme inline {
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-code);
+
+  --text-2xs: 0.667rem;
+  --text-2xs--line-height: 0.95rem;
+  --text-xs: 0.733rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.8rem;
+  --text-sm--line-height: 1.15rem;
+  --text-base: 0.867rem;
+  --text-base--line-height: 1.3rem;
+  --text-lg: 0.933rem;
+  --text-lg--line-height: 1.35rem;
+  --text-xl: 1.067rem;
+  --text-xl--line-height: 1.45rem;
+  --text-2xl: 1.4rem;
+  --text-2xl--line-height: 1.8rem;
+  --text-3xl: 2.2rem;
+  --text-3xl--line-height: 2.5rem;
+
+  --color-desk: var(--desk);
+  --color-monitor: var(--monitor);
+  --color-inset: var(--inset);
+  --color-panel: var(--panel);
+  --color-bar: var(--bar);
+  --color-raised: var(--raised);
+  --color-raised-hover: var(--raised-hover);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-hi: var(--hi);
+  --color-lo: var(--lo);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-ok: var(--ok);
+  --color-ok-fill: var(--ok-fill);
+  --color-warn: var(--warn);
+  --color-warn-fill: var(--warn-fill);
+  --color-bad: var(--bad);
+  --color-bad-fill: var(--bad-fill);
+  --color-info: var(--info);
+  --color-info-fill: var(--info-fill);
+  --color-purple: var(--purple);
+  --color-purple-fill: var(--purple-fill);
+  --color-orange: var(--orange);
+  --color-orange-fill: var(--orange-fill);
+  --color-accent: var(--accent);
+  --color-accent-face: var(--accent-face);
+  --color-accent-ink: var(--accent-ink);
+}
+
+@utility bevel-out {
+  border-style: solid;
+  border-width: 1px;
+  border-color: var(--hi) var(--lo) var(--lo) var(--hi);
+}
+
+@utility bevel-in {
+  border-style: solid;
+  border-width: 1px;
+  border-color: var(--lo) var(--hi) var(--hi) var(--lo);
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Page-level rules stay outside @layer on purpose: when published as a Claude
+ * artifact, the host adds its own unlayered body styles (white background,
+ * system font), and unlayered rules always beat layered ones.
+ */
+html {
+  font-size: var(--density);
+  height: 100%;
+  /* Keeps the app clear of a phone's status bar and home indicator when
+     installed. Same values the Claude artifact wrapper uses, so they never stack. */
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--desk);
+  color: var(--fg);
+  font-family: var(--font-ui);
+  font-size: 0.867rem;
+  line-height: 1.3rem;
+  -webkit-font-smoothing: auto;
+}
+#root {
+  height: 100%;
+}
+
+@layer base {
+  ::selection {
+    background: var(--accent-face);
+    color: var(--accent-ink);
+  }
+  :focus-visible {
+    outline: 1px dotted var(--fg);
+    outline-offset: 1px;
+  }
+  * {
+    scrollbar-color: var(--line-strong) var(--inset);
+    scrollbar-width: thin;
+  }
+  input[type='date'],
+  input[type='time'],
+  input[type='datetime-local'] {
+    font-family: var(--font-code);
+  }
+  ::-webkit-calendar-picker-indicator {
+    opacity: 0.6;
+    cursor: pointer;
+  }
+  dialog::backdrop {
+    background: rgb(0 0 0 / 0.45);
+  }
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  summary,
+  label[for] {
+    cursor: default;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "Personal HQ",
+  "short_name": "HQ",
+  "description": "Tasks, ideas, notes, projects, and deadlines in one retro desktop workspace.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1f2022",
+  "theme_color": "#333539",
+  "categories": ["productivity", "education"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Inbox", "short_name": "Inbox", "description": "Capture and sort new items", "url": "./#inbox", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Tasks", "short_name": "Tasks", "url": "./#tasks", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Calendar", "short_name": "Calendar", "url": "./#calendar", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Notes", "short_name": "Notes", "url": "./#notes", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
