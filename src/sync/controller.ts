@@ -33,6 +33,8 @@ let again = false;
 let debounce: ReturnType<typeof setTimeout> | undefined;
 let interval: ReturnType<typeof setInterval> | undefined;
 let applying = false;
+/** Bumped whenever sync starts or stops, so rounds from an older session can tell. */
+let generation = 0;
 const detachers: (() => void)[] = [];
 
 /** Sync needs the server address, Web Crypto, and network access (Claude artifacts can't reach other servers). */
@@ -103,18 +105,27 @@ export function syncNow(): Promise<void> {
     again = true;
     return running;
   }
+  // A round belongs to the sync session it started in. If sync is turned
+  // off (or restarted) meanwhile, the round stops without saving or reporting.
+  const session = generation;
+  const current = () => session === generation && state !== null && keys !== null;
   running = (async () => {
     do {
       again = false;
+      if (!current()) break;
+      const st = state!;
+      const k = keys!;
       useSync.setState({ status: 'syncing' });
       try {
         await withLock(async () => {
+          if (!current()) return;
           await syncOnce({
             transport: getTransport(),
-            keys: keys!,
-            state: state!,
+            keys: k,
+            state: st,
             getWorkspace: workspaceSnapshot,
             apply: (changes, settings) => {
+              if (!current()) return;
               applying = true;
               try {
                 applyRemoteChanges(changes, settings);
@@ -124,9 +135,11 @@ export function syncNow(): Promise<void> {
             },
           });
         });
+        if (!current()) break;
         await saveState();
-        useSync.setState({ status: 'idle', lastSyncAt: state!.lastSyncAt, error: null });
+        useSync.setState({ status: 'idle', lastSyncAt: st.lastSyncAt, error: null });
       } catch (e) {
+        if (!current()) break;
         const offline = e instanceof SyncNetworkError || (typeof navigator !== 'undefined' && navigator.onLine === false);
         useSync.setState({ status: offline ? 'offline' : 'error', error: errorMessage(e) });
         await saveState().catch(() => {});
@@ -135,6 +148,8 @@ export function syncNow(): Promise<void> {
     } while (again);
   })().finally(() => {
     running = null;
+    // A change arrived for a newer session while an old round was finishing.
+    if (again && state) scheduleSync(0);
   });
   return running;
 }
@@ -147,6 +162,7 @@ async function withLock(fn: () => Promise<void>) {
 }
 
 async function begin(code: string, fresh: boolean) {
+  generation++;
   keys = await deriveSyncKeys(code);
   state = fresh ? newSyncState(normalizeSyncCode(code)) : state;
   await saveState();
@@ -203,6 +219,8 @@ export async function joinSync(input: string): Promise<void> {
 
 /** Stops syncing on this device. Its data stays; the cloud copy is untouched. */
 export async function disableSync(): Promise<void> {
+  generation++;
+  again = false;
   detach();
   state = null;
   keys = null;

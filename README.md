@@ -26,7 +26,7 @@ Each copy keeps its own data. To bring over what you had in the Claude artifact:
 1. Open Personal HQ in Claude and go to Settings › Data › **Download backup** (or **Copy JSON** and save the text as a `.json` file).
 2. Open the installed app, go to Settings › Data › **Import JSON…**, pick the file, tick *Also import settings*, and press **Import**.
 
-The Claude copy is not changed. Do the same to move data between devices; installed copies on different devices do not sync.
+The Claude copy is not changed. To keep your Mac and phone in step from then on, turn on sync (below).
 
 ## Sections
 
@@ -66,11 +66,15 @@ In the command bar, start with `>` to show only commands.
 
 ## Your data
 
-**Where it lives.** All tasks, ideas, notes, projects, events, bugs, prompts, the activity log, settings, and widget layout are saved in this browser's `localStorage`, under keys starting with `phq:`. Changes are saved automatically; the status bar shows "Saved", "Saving…", or an error.
+**Where it lives.** All tasks, ideas, notes, projects, events, bugs, prompts, the activity log, settings, and widget layout are saved in this browser's IndexedDB database (`personal-hq`), which has room for hundreds of megabytes. Changes are saved automatically; the status bar shows "Saved", "Saving…", or an error. Earlier versions used `localStorage`; the first time this version opens it copies that data over and leaves the old copy in place. If IndexedDB can't be opened, the app falls back to `localStorage`.
 
-**It does not sync.** Data stays in the browser and device where you entered it. A different browser, another computer, a private window, or clearing site data will not have it. When Personal HQ runs as a Claude artifact, the data belongs to that artifact's address in your browser.
+**Protected storage.** On startup the app asks the browser to treat its storage as persistent, so it isn't cleared automatically when space runs low or (in Safari) after a stretch without use. Browsers decide on their own; installed apps are usually granted it. Settings › Data shows whether it was granted, and how much space is used.
 
-**Back up regularly.** Settings › Data › *Download backup (.json)* saves everything to a file (inside a Claude artifact you confirm the download first). *Copy JSON* puts the same backup on the clipboard. Keep backups somewhere safe; they are the only way to move data or recover it after the browser's storage is cleared.
+**Each browser has its own copy.** A different browser, another computer, or a private window starts empty unless you turn on sync or import a backup. Clearing site data erases that browser's copy. When Personal HQ runs as a Claude artifact, the data belongs to that artifact's address in your browser.
+
+**Daily snapshots.** The first time you open the app each day it saves a snapshot, and keeps the last 7. Settings › Data lists them with a Restore button. They protect against mistakes (a bad import, deleting the wrong thing), not against the browser's data being erased.
+
+**Back up regularly.** Settings › Data › *Download backup (.json)* saves everything to a file (inside a Claude artifact you confirm the download first). *Copy JSON* puts the same backup on the clipboard. Keep backups somewhere safe. If you haven't downloaded one in 7 days (30 with sync on), a reminder appears at the top of the app.
 
 **Importing.** Settings › Data › *Import JSON…* accepts Personal HQ and Agent Command Center backups. The file is validated first and you see a preview with counts. You then choose:
 
@@ -96,9 +100,24 @@ The original `acc:*` keys are never modified or deleted. Settings › Data shows
 
 No sample projects or fake activity are created. A new installation starts empty.
 
+## Sync between devices
+
+Settings › **Sync between devices** keeps your Mac, phone, and any other browser in step.
+
+1. On the device that has your data, press **Turn on sync**. It uploads everything and shows a private 26-character code.
+2. On each other device, open Personal HQ, go to Settings › Sync, enter the code, and press **Join**. Anything already on that device is merged in, not replaced.
+
+After that, changes sync a few seconds after you make them, every minute while the app is open, when you switch back to it, and when the connection returns. The status bar shows "⇅ Synced 2:41 PM", "Syncing…", "Sync offline", or "Sync problem". If two devices change the same item, the most recent change wins; deletions sync too.
+
+**Privacy.** Records are encrypted on your device (AES-256-GCM) with a key derived from your code before upload. The server stores ciphertext, opaque row names, and change times; it never sees the code, your text, or even which kind of record a row is. Treat the code like a password: anyone who has it can read and change your synced data. Show it again from Settings while sync is on. If the code is lost on every device, the cloud copy can't be opened (each device still keeps its own data).
+
+**Turning it off.** *Turn off here* stops syncing on one device and keeps its data. *Delete cloud copy* erases the encrypted copy on the server; turn sync off on your other devices too, or they upload their next changes again.
+
+**The server** is a free Supabase project (`personal-hq`, US East). Its only parts are one table, closed to direct access, and three functions (`supabase/migrations/`). Free projects pause after about a week with no requests at all; normal use keeps it awake, and a paused project can be restored from the Supabase dashboard. Sync isn't available inside the Claude artifact, which can't connect to other servers.
+
 ## Privacy and local suggestions
 
-Nothing is sent to any server. Fonts load from Google Fonts; that is the only network request.
+With sync off, nothing is sent to any server; fonts from Google Fonts are the only network request. With sync on, only encrypted records go to the sync server (see above).
 
 The tag, category, similar-item, "looks like a to-do", and checklist suggestions are **local rules**: keyword lists, word overlap, and fixed templates in `src/organize/rules.ts`. They are labeled as local suggestions everywhere and never claim to come from an AI model. The organization review shows every suggestion with its reason; nothing changes until you select items and press Apply.
 
@@ -136,7 +155,8 @@ Note: every GitHub Pages site under `crazyblunt.github.io` shares one browser st
 ```
 src/
   data/          data model, validation, storage adapters, migration, store, selectors, backup
-    adapters/    StorageAdapter interface; localStorage and in-memory implementations
+    adapters/    StorageAdapter interface; IndexedDB, localStorage, and in-memory implementations
+  sync/          end-to-end encrypted sync: code and keys, engine, server transport, controller
   organize/      local rule-based suggestions and the provider interface
   app/           routing, UI state, clock, focus timer, file saving, device-only preferences
   shell/         title bar, sidebar, status bar, command bar
@@ -145,7 +165,9 @@ src/
   ui/            shared controls: buttons, fields, dialogs, panels, chips
 ```
 
-Components never touch `localStorage` directly. All persistence goes through `StorageAdapter` (`src/data/adapters/types.ts`), so a cloud-backed adapter can be added later without changing the UI.
+Components never touch storage directly. All persistence goes through `StorageAdapter` (`src/data/adapters/types.ts`). Sync sits beside it: it reads the workspace, applies incoming changes through the store, and keeps its own state (code, last change seen, deletions) in the adapter's side store.
+
+The sync server's address and publishable key are in `src/sync/config.ts` (public by design; override with `VITE_SYNC_URL` / `VITE_SYNC_KEY`). To use your own Supabase project, apply the SQL in `supabase/migrations/` and point those at it.
 
 ### Tech
 

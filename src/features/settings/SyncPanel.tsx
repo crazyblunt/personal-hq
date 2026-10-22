@@ -152,7 +152,7 @@ export function SyncPanel() {
                 onClick={() =>
                   confirmAction({
                     title: 'Delete the cloud copy?',
-                    body: 'The encrypted copy on the sync server is deleted and sync turns off on this device. Data on your devices stays. Other devices will show a sync problem until you turn sync off there or start again with a new code.',
+                    body: 'The encrypted copy on the sync server is deleted and sync turns off on this device. Data on your devices stays. Turn sync off on your other devices too; otherwise they upload their next changes again.',
                     confirmLabel: 'Delete cloud copy',
                     onConfirm: async () => {
                       await deleteCloudCopy();

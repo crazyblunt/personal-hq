@@ -62,6 +62,27 @@ describe('sync controller', () => {
     expect(payloads.filter((p) => p.k.startsWith('tasks:'))).toHaveLength(2);
   });
 
+  it('turning sync off during a sync round does not report a false problem', async () => {
+    createTask({ title: 'First' });
+    await enableSync();
+    let release: (() => void) | undefined;
+    setSyncTransport({
+      ...server,
+      push: async (space, rows) => {
+        await new Promise<void>((r) => (release = r));
+        return server.push(space, rows);
+      },
+    });
+    createTask({ title: 'Second' });
+    const round = syncNow();
+    await vi.waitFor(() => expect(release).toBeDefined());
+    await disableSync();
+    release!();
+    await round;
+    expect(useSync.getState()).toMatchObject({ status: 'off', error: null });
+    expect(await getAdapter().readAux!('sync')).toBeNull();
+  });
+
   it('turning sync off keeps local data and forgets the code', async () => {
     createTask({ title: 'Stays' });
     await enableSync();
