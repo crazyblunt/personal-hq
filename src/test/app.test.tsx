@@ -7,6 +7,7 @@ import { buildExport } from '../data/backup';
 import { createMemoryAdapter } from '../data/adapters/memory';
 import { emptyWorkspace } from '../data/defaults';
 import { createNote, createTask, initStore, useHQ } from '../data/store';
+import { clearMatchMedia, mockMatchMedia } from './helpers';
 
 async function renderApp() {
   location.hash = '';
@@ -143,5 +144,26 @@ describe('Personal HQ app', () => {
     fireEvent.keyDown(window, { key: 'g' });
     fireEvent.keyDown(window, { key: 'c' });
     expect(await screen.findByRole('heading', { name: 'Calendar', level: 1 })).toBeInTheDocument();
+  });
+});
+
+describe('My Day grid', () => {
+  afterEach(() => clearMatchMedia());
+
+  const regionTitles = () => screen.getAllByRole('region').map((r) => r.querySelector('h2')?.textContent);
+
+  it('lays widgets out on the 12-column grid at desktop width', async () => {
+    mockMatchMedia(true);
+    await renderApp();
+    const today = screen.getByRole('region', { name: 'Today' }).parentElement!;
+    expect(today.style.gridColumn).toBe('1 / span 8');
+    expect(today.style.gridRow).toBe('1 / span 12');
+  });
+
+  it('stacks widgets in reading order on narrow screens', async () => {
+    mockMatchMedia(false);
+    await renderApp();
+    expect(regionTitles().slice(0, 3)).toEqual(['Today', 'Quick actions', 'Deadlines & events']);
+    expect(screen.getByRole('region', { name: 'Today' }).parentElement!.style.gridColumn).toBe('');
   });
 });

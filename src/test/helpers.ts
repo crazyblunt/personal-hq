@@ -54,3 +54,21 @@ export function writeLegacy(storage: Storage, data = legacyFixture()) {
   for (const [k, v] of Object.entries(data)) storage.setItem(`acc:${k}`, JSON.stringify(v));
   storage.setItem('acc:meta', JSON.stringify({ schemaVersion: 2 }));
 }
+
+/** Installs a `window.matchMedia` stub that answers every query with `matches` (jsdom has none). */
+export function mockMatchMedia(matches: boolean) {
+  window.matchMedia = ((media: string) => ({
+    matches,
+    media,
+    onchange: null,
+    addEventListener() {},
+    removeEventListener() {},
+    addListener() {},
+    removeListener() {},
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+}
+
+export function clearMatchMedia() {
+  delete (window as { matchMedia?: unknown }).matchMedia;
+}

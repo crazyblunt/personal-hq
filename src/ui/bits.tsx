@@ -1,5 +1,5 @@
 import { Search, X } from 'lucide-react';
-import { useState, type ComponentType, type ReactNode } from 'react';
+import { useState, type ComponentType, type HTMLAttributes, type ReactNode } from 'react';
 import { navigate } from '../app/router';
 import { useHQ } from '../data/store';
 import { PRIORITY_LABEL, type DateKey, type Priority, type ProjectColor, type SectionId } from '../data/types';
@@ -27,6 +27,7 @@ export function Panel({
   className,
   bodyClassName,
   titleId,
+  headerProps,
 }: {
   title: ReactNode;
   icon?: ReactNode;
@@ -35,10 +36,12 @@ export function Panel({
   className?: string;
   bodyClassName?: string;
   titleId?: string;
+  /** Extra attributes for the title strip (My Day uses it as a drag handle). */
+  headerProps?: HTMLAttributes<HTMLElement>;
 }) {
   return (
     <section aria-labelledby={titleId} className={cn('flex min-w-0 flex-col border border-line bg-panel', className)}>
-      <header className="flex min-h-7 flex-wrap items-center gap-x-2 gap-y-1 border-b border-line bg-bar px-2 py-0.5">
+      <header {...headerProps} className={cn('flex min-h-7 flex-wrap items-center gap-x-2 gap-y-1 border-b border-line bg-bar px-2 py-0.5', headerProps?.className)}>
         {icon && <span className="text-muted [&_svg]:size-3.5">{icon}</span>}
         <h2 id={titleId} className="min-w-24 flex-1 truncate font-mono text-2xs font-semibold tracking-wider text-muted uppercase">
           {title}
