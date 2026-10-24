@@ -26,10 +26,16 @@ const RELATION_LABEL: Record<Relation, string> = {
 
 const EMPTY: Connection[] = [];
 
-/** The link index for the whole workspace, rebuilt only when one of the four collections changes. */
+let cached: { key: unknown[]; index: Map<string, Connection[]> } | null = null;
+
+/** The link index for the whole workspace, shared by every component and rebuilt only when one of the four collections changes. */
 export function useLinkIndex(): Map<string, Connection[]> {
   const data = useHQ(useShallow((s) => ({ tasks: s.tasks, notes: s.notes, ideas: s.ideas, projects: s.projects })));
-  return useMemo(() => buildLinkIndex(data), [data]);
+  return useMemo(() => {
+    const key = [data.tasks, data.notes, data.ideas, data.projects];
+    if (!cached || cached.key.some((k, i) => k !== key[i])) cached = { key, index: buildLinkIndex(data) };
+    return cached.index;
+  }, [data]);
 }
 
 export function useConnections(ref: ItemRef): Connection[] {

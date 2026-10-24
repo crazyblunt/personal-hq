@@ -1,3 +1,4 @@
+import { normalizeCollection } from './normalize';
 import { activitySeries, calendarItems, isMyDayTask, overdueItems, projectProgress, tasksForView } from './selectors';
 import type { ActivityEntry, CalendarEvent, Project, Task } from './types';
 
@@ -122,3 +123,15 @@ describe('activitySeries', () => {
     expect(s.reduce((n, d) => n + d.total, 0)).toBe(3);
   });
 });
+
+describe('idea reminders on the calendar', () => {
+  const idea = (raw: Record<string, unknown>) => normalizeCollection('ideas', [raw]).items[0];
+  it('includes idea reminders, flags overdue ones, and skips archived ideas', () => {
+    const today = '2026-10-24';
+    const ideas = [idea({ id: 'r1', body: 'Call Sam', remindOn: '2026-10-26' }), idea({ id: 'r2', body: 'Pay fee', remindOn: '2026-10-20' }), idea({ id: 'r3', body: 'Old', remindOn: '2026-10-25', archived: true })];
+    const items = calendarItems({ tasks: [], events: [], projects: [], ideas }, '2026-10-24', '2026-10-31', today);
+    expect(items.map((i) => [i.kind, i.id, i.title])).toEqual([['reminder', 'r1', 'Call Sam']]);
+    expect(overdueItems({ tasks: [], projects: [], ideas }, today).map((i) => [i.id, i.overdue])).toEqual([['r2', true]]);
+  });
+});
+

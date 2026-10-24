@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronLeft, ChevronRight, FolderKanban, Plus, Zap } from 'lucide-react';
+import { Bell, CalendarDays, ChevronLeft, ChevronRight, FolderKanban, Plus, Zap } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useToday } from '../../app/clock';
@@ -17,6 +17,7 @@ type View = 'month' | 'week' | 'agenda';
 function openItem(i: CalendarItem) {
   if (i.kind === 'task') openEditor({ kind: 'task', id: i.id });
   else if (i.kind === 'event') openEditor({ kind: 'event', id: i.id });
+  else if (i.kind === 'reminder') openEditor({ kind: 'idea', id: i.id });
   else navigate('projects', i.id);
 }
 
@@ -25,6 +26,7 @@ const KIND_STYLE: Record<CalendarItem['kind'], string> = {
   task: 'border-l-accent text-fg',
   milestone: 'border-l-purple text-fg',
   project: 'border-l-warn text-fg',
+  reminder: 'border-l-orange text-fg',
 };
 
 function ItemChip({ item, clock24h, full = false }: { item: CalendarItem; clock24h: boolean; full?: boolean }) {
@@ -41,6 +43,7 @@ function ItemChip({ item, clock24h, full = false }: { item: CalendarItem; clock2
       {item.kind === 'task' && <Check checked={item.done} onChange={() => toggleTaskDone(item.id)} label={item.done ? `Reopen ${item.title}` : `Complete ${item.title}`} className="size-3 [&_svg]:size-2" />}
       {item.kind === 'milestone' && <Zap className="size-2.5 shrink-0 text-purple" aria-hidden="true" />}
       {item.kind === 'project' && <FolderKanban className="size-2.5 shrink-0 text-warn" aria-hidden="true" />}
+      {item.kind === 'reminder' && <Bell className="size-2.5 shrink-0 text-orange" aria-hidden="true" />}
       <button
         type="button"
         onClick={(e) => {
@@ -62,7 +65,7 @@ export function CalendarPage() {
   const today = useToday();
   const route = useRoute();
   const { tasks, events, projects, weekStartsOn, clock24h } = useHQ(
-    useShallow((s) => ({ tasks: s.tasks, events: s.events, projects: s.projects, weekStartsOn: s.settings.weekStartsOn, clock24h: s.settings.clock24h })),
+    useShallow((s) => ({ tasks: s.tasks, events: s.events, projects: s.projects, ideas: s.ideas, weekStartsOn: s.settings.weekStartsOn, clock24h: s.settings.clock24h })),
   );
   const [view, setView] = useState<View>(() => readDevice<View>('calendar-view', 'month'));
   const [cursor, setCursor] = useState(today);
@@ -230,7 +233,7 @@ export function CalendarPage() {
 }
 
 function Agenda({ today, days, onMore, clock24h }: { today: string; days: number; onMore: () => void; clock24h: boolean }) {
-  const data = useHQ(useShallow((s) => ({ tasks: s.tasks, events: s.events, projects: s.projects })));
+  const data = useHQ(useShallow((s) => ({ tasks: s.tasks, events: s.events, projects: s.projects, ideas: s.ideas })));
   const overdue = useMemo(() => overdueItems(data, today), [data, today]);
   const upcoming = useMemo(() => calendarItems(data, today, addDays(today, days), today), [data, today, days]);
   const groups = useMemo(() => {

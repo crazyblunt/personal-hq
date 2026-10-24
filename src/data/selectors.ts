@@ -1,5 +1,6 @@
 /** Derived views of the workspace. Pure functions: easy to test, no hidden state. */
 import { addDays, diffDays, toDateKey } from '../lib/dates';
+import { ideaTitle } from './titles';
 import {
   PRIORITY_RANK,
   type ActivityEntry,
@@ -7,6 +8,7 @@ import {
   type CalendarEvent,
   type DateKey,
   type Project,
+  type Idea,
   type Task,
   type TaskStatus,
 } from './types';
@@ -111,7 +113,7 @@ export function milestoneProgress(milestoneId: string, tasks: Task[]) {
 
 /* ---------- Calendar items ---------- */
 
-export type CalendarItemKind = 'event' | 'task' | 'project' | 'milestone';
+export type CalendarItemKind = 'event' | 'task' | 'project' | 'milestone' | 'reminder';
 
 export interface CalendarItem {
   key: string;
@@ -133,7 +135,7 @@ export function eventOccursOn(e: CalendarEvent, day: DateKey): boolean {
 
 /** Everything with a date between `from` and `to` (inclusive), sorted by day then time. */
 export function calendarItems(
-  data: { tasks: Task[]; events: CalendarEvent[]; projects: Project[] },
+  data: { tasks: Task[]; events: CalendarEvent[]; projects: Project[]; ideas?: Idea[] },
   from: DateKey,
   to: DateKey,
   today: DateKey,
@@ -173,12 +175,17 @@ export function calendarItems(
       out.push({ key: `milestone:${p.id}:${m.id}`, kind: 'milestone', id: p.id, date: m.dueDate, time: null, title: `${m.title} · ${p.name}`, projectId: p.id, done: m.done, overdue: !m.done && m.dueDate < today });
     }
   }
-  const kindRank: Record<CalendarItemKind, number> = { event: 0, milestone: 1, project: 2, task: 3 };
+  // Idea reminders (`remindOn`) show until the idea is archived or the reminder is cleared.
+  for (const i of data.ideas ?? []) {
+    if (i.archived || !i.remindOn || i.remindOn < from || i.remindOn > to) continue;
+    out.push({ key: `reminder:${i.id}`, kind: 'reminder', id: i.id, date: i.remindOn, time: null, title: ideaTitle(i), projectId: i.projectId, done: false, overdue: i.remindOn < today });
+  }
+  const kindRank: Record<CalendarItemKind, number> = { event: 0, milestone: 1, project: 2, task: 3, reminder: 4 };
   return out.sort((a, b) => a.date.localeCompare(b.date) || (a.time ?? '').localeCompare(b.time ?? '') || kindRank[a.kind] - kindRank[b.kind] || a.title.localeCompare(b.title));
 }
 
-/** Overdue open tasks, missed milestones, and missed project targets before `today`. */
-export function overdueItems(data: { tasks: Task[]; projects: Project[] }, today: DateKey): CalendarItem[] {
+/** Overdue open tasks, missed milestones, missed project targets, and past idea reminders before `today`. */
+export function overdueItems(data: { tasks: Task[]; projects: Project[]; ideas?: Idea[] }, today: DateKey): CalendarItem[] {
   return calendarItems({ ...data, events: [] }, '0000-01-01', addDays(today, -1), today).filter((i) => i.overdue);
 }
 

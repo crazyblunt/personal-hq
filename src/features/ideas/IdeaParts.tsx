@@ -1,15 +1,18 @@
 import { Bell, FileText, FolderKanban, Lightbulb, Link2, ListChecks, MessageCircle, NotebookPen, Route as RouteIcon, Star, Trash2, type LucideIcon } from 'lucide-react';
 import { useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useToday } from '../../app/clock';
 import { navigate } from '../../app/router';
 import { confirmAction, openEditor, toast } from '../../app/ui';
-import { convertIdea, createIdea, createTask, deleteIdea, ideaTitle, updateIdea, type ConvertTarget } from '../../data/store';
+import { refTitle } from '../../data/linking';
+import { convertIdea, createIdea, createTask, deleteIdea, ideaTitle, updateIdea, useHQ, type ConvertTarget } from '../../data/store';
 import { IDEA_KIND_LABEL, type Idea, type IdeaKind } from '../../data/types';
 import { relativeDay, relativeTime } from '../../lib/dates';
 import { parseQuickTask } from '../../lib/quickAdd';
 import { cn, hostOf } from '../../lib/util';
 import { ExtLink, ProjectChip, Segmented } from '../../ui/bits';
 import { Button } from '../../ui/controls';
+import { KIND_LABEL, openRef, useConnections } from '../../ui/LinkedItems';
 
 export const KIND_ICON: Record<IdeaKind, LucideIcon> = { idea: Lightbulb, link: Link2, thought: MessageCircle, plan: RouteIcon, reminder: Bell };
 
@@ -37,6 +40,10 @@ export function confirmDeleteIdea(idea: Idea) {
 /** Compact idea card with one-click organizing actions. */
 export function IdeaCard({ idea, inboxActions = false }: { idea: Idea; inboxActions?: boolean }) {
   const today = useToday();
+  const connections = useConnections({ kind: 'idea', id: idea.id });
+  const became = connections.filter((c) => c.relation === 'converted-to');
+  const linkCount = connections.length - became.length;
+  const ws = useHQ(useShallow((s) => ({ tasks: s.tasks, notes: s.notes, ideas: s.ideas, projects: s.projects })));
   const Icon = KIND_ICON[idea.kind];
   const title = ideaTitle(idea);
   const rest = idea.title.trim() ? idea.body : idea.body.split('\n').slice(1).join('\n').trim();
@@ -46,7 +53,6 @@ export function IdeaCard({ idea, inboxActions = false }: { idea: Idea; inboxActi
         <Icon className="size-3 shrink-0 text-muted" aria-hidden="true" />
         <span className="font-mono text-2xs tracking-wider text-muted uppercase">{IDEA_KIND_LABEL[idea.kind]}</span>
         {idea.inbox && <span className="font-mono text-2xs text-purple">· INBOX</span>}
-        {idea.converted.length > 0 && <span className="font-mono text-2xs text-ok">· → {idea.converted.map((c) => c.kind).join(', ')}</span>}
         <span className="ml-auto font-mono text-2xs text-subtle" title={new Date(idea.createdAt).toLocaleString()}>
           {relativeTime(idea.createdAt)}
         </span>
@@ -64,7 +70,16 @@ export function IdeaCard({ idea, inboxActions = false }: { idea: Idea; inboxActi
         <span className="text-sm font-bold break-words">{title}</span>
         {rest && <span className="line-clamp-3 text-sm break-words whitespace-pre-line text-muted">{rest}</span>}
       </button>
-      {(idea.url || idea.tags.length > 0 || idea.projectId || idea.remindOn || idea.relatedIds.length > 0) && (
+      {became.length > 0 && (
+        <div className="flex flex-wrap gap-1 px-2 pb-1">
+          {became.map((c) => (
+            <button key={c.ref.id} type="button" onClick={() => openRef(c.ref)} className="max-w-full truncate border border-ok-fill/60 bg-ok-fill/10 px-1 text-left font-mono text-2xs text-ok hover:underline">
+              → {KIND_LABEL[c.ref.kind]}: {refTitle(c.ref, ws)}
+            </button>
+          ))}
+        </div>
+      )}
+      {(idea.url || idea.tags.length > 0 || idea.projectId || idea.remindOn || linkCount > 0) && (
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 px-2 pb-1.5">
           {idea.url && (
             <ExtLink href={idea.url} className="max-w-48 truncate text-xs text-info">
@@ -73,7 +88,12 @@ export function IdeaCard({ idea, inboxActions = false }: { idea: Idea; inboxActi
           )}
           {idea.remindOn && <span className={cn('font-mono text-2xs', idea.remindOn < today ? 'text-bad' : 'text-warn')}>⏰ {relativeDay(idea.remindOn, today)}</span>}
           <ProjectChip projectId={idea.projectId} />
-          {idea.relatedIds.length > 0 && <span className="font-mono text-2xs text-subtle">{idea.relatedIds.length} related</span>}
+          {linkCount > 0 && (
+            <span className="flex items-center gap-0.5 font-mono text-2xs text-subtle" aria-label={`${linkCount} link${linkCount === 1 ? '' : 's'}`} title="Linked items (open the idea to see them)">
+              <Link2 className="size-3" aria-hidden="true" />
+              {linkCount}
+            </span>
+          )}
           {idea.tags.map((t) => (
             <span key={t} className="font-mono text-2xs text-subtle">
               #{t}

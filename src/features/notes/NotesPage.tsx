@@ -87,7 +87,7 @@ function NotesWorkspace({ selectedId }: { selectedId: string | null }) {
         <div className="flex flex-col gap-1 border-b border-line bg-bar p-1.5">
           <SearchBox id="note-search" value={query} onChange={setQuery} placeholder="Search notes" />
           <div className="flex gap-1">
-            <Select value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Filter by category">
+            <Select value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Filter by category" className="w-auto min-w-0 flex-1">
               <option value="">All categories</option>
               {categories.map((c) => (
                 <option key={c} value={c}>
@@ -95,7 +95,7 @@ function NotesWorkspace({ selectedId }: { selectedId: string | null }) {
                 </option>
               ))}
             </Select>
-            <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort notes" className="w-28">
+            <Select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort notes" className="w-24 shrink-0">
               <option value="updated">Recent</option>
               <option value="created">Newest</option>
               <option value="title">A–Z</option>

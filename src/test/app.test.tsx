@@ -8,7 +8,7 @@ import { createMemoryAdapter } from '../data/adapters/memory';
 import { emptyWorkspace } from '../data/defaults';
 import { DEFAULT_WIDGETS } from '../data/defaults';
 import type { Note, Task } from '../data/types';
-import { createIdea, createNote, createTask, initStore, updateSettings, useHQ } from '../data/store';
+import { convertIdea, createIdea, createNote, createTask, initStore, updateSettings, useHQ } from '../data/store';
 import { clearMatchMedia, mockMatchMedia } from './helpers';
 
 async function renderApp() {
@@ -354,6 +354,28 @@ describe('Explorer', () => {
     await user.click(screen.getByRole('option', { name: /See all results in Explorer/ }));
     expect(useRoute.getState().section).toBe('explorer');
     expect(await screen.findByRole('searchbox', { name: 'Search everything' })).toHaveValue('biology');
+  });
+});
+
+describe('Ideas connected', () => {
+  it('shows what an idea became on its card', async () => {
+    const { user } = await renderApp();
+    act(() => {
+      const i = createIdea({ body: 'Finish lab report' });
+      convertIdea(i.id, 'task');
+      navigate('ideas');
+    });
+    await user.click(await screen.findByRole('button', { name: '→ Task: Finish lab report' }));
+    expect(within(openDialog()).getByDisplayValue('Finish lab report')).toBeInTheDocument();
+  });
+
+  it('lists idea reminders in the Deadlines widget', async () => {
+    await renderApp();
+    act(() => {
+      createIdea({ body: 'Call the dentist', remindOn: new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10) });
+    });
+    const panel = screen.getByRole('region', { name: 'Deadlines & events' });
+    expect(within(panel).getByRole('button', { name: /Call the dentist/ })).toBeInTheDocument();
   });
 });
 

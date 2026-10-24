@@ -1,4 +1,4 @@
-import { Activity, AlarmClock, CalendarDays, Clock, Command, FolderKanban, FolderPlus, History, Inbox, Lightbulb, Link2, ListChecks, NotebookPen, Plus, ScanSearch, Shuffle, Sun, Timer, Zap, type LucideIcon } from 'lucide-react';
+import { Activity, AlarmClock, Bell, CalendarDays, Clock, Command, FolderKanban, FolderPlus, History, Inbox, Lightbulb, Link2, ListChecks, NotebookPen, Plus, ScanSearch, Shuffle, Sun, Timer, Zap, type LucideIcon } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useToday } from '../../app/clock';
@@ -84,10 +84,11 @@ function TodayWidget() {
 function openCalendarItem(i: CalendarItem) {
   if (i.kind === 'task') openEditor({ kind: 'task', id: i.id });
   else if (i.kind === 'event') openEditor({ kind: 'event', id: i.id });
+  else if (i.kind === 'reminder') openEditor({ kind: 'idea', id: i.id });
   else navigate('projects', i.id);
 }
 
-const KIND_ICON: Record<CalendarItem['kind'], LucideIcon> = { event: CalendarDays, task: ListChecks, project: FolderKanban, milestone: Zap };
+const KIND_ICON: Record<CalendarItem['kind'], LucideIcon> = { event: CalendarDays, task: ListChecks, project: FolderKanban, milestone: Zap, reminder: Bell };
 
 export function CalendarItemRow({ item, today }: { item: CalendarItem; today: string }) {
   const Icon = KIND_ICON[item.kind];
@@ -107,7 +108,7 @@ export function CalendarItemRow({ item, today }: { item: CalendarItem; today: st
 
 function DeadlinesWidget() {
   const today = useToday();
-  const data = useHQ(useShallow((s) => ({ tasks: s.tasks, events: s.events, projects: s.projects })));
+  const data = useHQ(useShallow((s) => ({ tasks: s.tasks, events: s.events, projects: s.projects, ideas: s.ideas })));
   const items = useMemo(() => {
     const overdue = overdueItems(data, today).slice(0, 5);
     const upcoming = calendarItems(data, today, addDays(today, 14), today).filter((i) => !i.done);
