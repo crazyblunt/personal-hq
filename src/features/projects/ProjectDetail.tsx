@@ -17,6 +17,7 @@ import { QuickAddTask } from '../tasks/QuickAddTask';
 import { TaskBoard, TaskRow } from '../tasks/TaskRow';
 import { BugsTable } from './BugsTable';
 import { PROJECT_STATUS_STYLE } from './styles';
+import { LinkedItems } from '../../ui/LinkedItems';
 
 const LINK_ICON: Record<LinkKind, LucideIcon> = { repo: GitBranch, session: Terminal, pr: GitPullRequest, website: Globe, doc: FileText, other: Link2 };
 
@@ -297,6 +298,7 @@ export function ProjectDetail({ id }: { id: string }) {
             <p className="border-t border-line px-2 py-1 text-2xs text-subtle">Bookmarks only. Personal HQ cannot read or control GitHub, Claude Code, or other services.</p>
           </Panel>
 
+          <LinkedItems item={{ kind: 'project', id }} />
           <Panel title="Recent activity" className="lg:col-span-2" tools={history.length > 8 ? <Button size="xs" variant="ghost" onClick={() => setTab('activity')}>All history</Button> : undefined}>
             {history.length === 0 ? (
               <p className="px-2 py-2 text-sm text-muted">Changes to this project and its tasks, notes, and bugs are recorded here.</p>

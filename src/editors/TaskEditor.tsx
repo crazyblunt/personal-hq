@@ -5,7 +5,7 @@ import { useToday } from '../app/clock';
 import { setFocusTask } from '../app/focus';
 import { navigate } from '../app/router';
 import { closeEditor, confirmAction, toast, touchRecent } from '../app/ui';
-import { createTask, deleteTask, ideaTitle, updateTask, useHQ } from '../data/store';
+import { createTask, deleteTask, updateTask, useHQ } from '../data/store';
 import { PRIORITIES, PRIORITY_LABEL, TASK_STATUSES, TASK_STATUS_LABEL, type Subtask, type Task } from '../data/types';
 import { formatDate, isDateKey } from '../lib/dates';
 import { newId } from '../lib/util';
@@ -13,6 +13,7 @@ import { generateChecklist } from '../organize/rules';
 import { TagInput } from '../ui/bits';
 import { Button, Check, Field, Input, Select, Textarea } from '../ui/controls';
 import { Dialog } from '../ui/Dialog';
+import { LinkedItems } from '../ui/LinkedItems';
 import { CategoryDatalist, ProjectSelect, sameJson } from './common';
 
 type Draft = Pick<Task, 'title' | 'description' | 'status' | 'priority' | 'category' | 'tags' | 'dueDate' | 'projectId' | 'milestoneId' | 'eventId' | 'subtasks' | 'assignee'> & { myDayToday: boolean };
@@ -52,13 +53,6 @@ export function TaskEditor({ id, defaults }: { id?: string; defaults?: Partial<T
 
   const project = useHQ((s) => (d.projectId ? s.projects.find((p) => p.id === d.projectId) : undefined));
   const events = useHQ(useShallow((s) => [...s.events].sort((a, b) => b.startDate.localeCompare(a.startDate))));
-  const sourceIdea = useHQ((s) => (existing?.source?.kind === 'idea' ? s.ideas.find((x) => x.id === existing.source!.id) : undefined));
-  const sourceNote = useHQ((s) => (existing?.source?.kind === 'note' ? s.notes.find((x) => x.id === existing.source!.id) : undefined));
-  const source = sourceIdea
-    ? { label: `idea “${ideaTitle(sourceIdea)}”`, go: () => navigate('ideas', sourceIdea.id) }
-    : sourceNote
-      ? { label: `note “${sourceNote.title}”`, go: () => navigate('notes', sourceNote.id) }
-      : null;
 
   if (id && !existing) {
     return (
@@ -281,14 +275,6 @@ export function TaskEditor({ id, defaults }: { id?: string; defaults?: Partial<T
           <Check checked={d.myDayToday} onChange={(v) => set('myDayToday', v)} label="Add to My Day" />
           <Sun className="size-3.5 text-warn" aria-hidden="true" /> Add to My Day (today only)
         </label>
-        {source && (
-          <p className="text-xs text-subtle sm:col-span-6">
-            Created from{' '}
-            <button type="button" className="text-accent hover:underline" onClick={() => (closeEditor(), source.go())}>
-              {source.label}
-            </button>
-          </p>
-        )}
         {existing && (
           <p className="font-mono text-2xs text-subtle sm:col-span-6">
             Created {new Date(existing.createdAt).toLocaleString()} · Updated {new Date(existing.updatedAt).toLocaleString()}
@@ -296,6 +282,11 @@ export function TaskEditor({ id, defaults }: { id?: string; defaults?: Partial<T
           </p>
         )}
       </form>
+      {existing ? (
+        <LinkedItems item={{ kind: 'task', id: existing.id }} locked={dirty} className="mt-3" />
+      ) : (
+        <p className="mt-3 text-xs text-subtle">Save the task to add links.</p>
+      )}
     </Dialog>
   );
 }

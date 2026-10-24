@@ -1,21 +1,23 @@
-import { ChevronLeft, Eye, ListChecks, ListTodo, Pencil, Star, Trash2, X } from 'lucide-react';
+import { ChevronLeft, Eye, ListChecks, ListTodo, Pencil, Star, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { registerDraft } from '../../app/drafts';
 import { navigate } from '../../app/router';
 import { confirmAction, openEditor, toast, touchRecent } from '../../app/ui';
-import { convertNoteToTask, deleteNote, ideaTitle, updateNote, useHQ } from '../../data/store';
+import { convertNoteToTask, deleteNote, updateNote, useHQ } from '../../data/store';
 import type { Note } from '../../data/types';
 import { formatClock, formatStamp } from '../../lib/dates';
 import { cn } from '../../lib/util';
 import { suggestCategory, suggestTags } from '../../organize/rules';
 import { TagInput } from '../../ui/bits';
-import { Button, Field, Input, Select } from '../../ui/controls';
+import { Button, Field, Input } from '../../ui/controls';
 import { CategoryDatalist, ProjectSelect } from '../../editors/common';
 import { NotePreview } from './NotePreview';
+import { LinkedItems } from '../../ui/LinkedItems';
 
-type Draft = Pick<Note, 'title' | 'body' | 'tags' | 'category' | 'projectId' | 'favorite' | 'taskIds'>;
-const pick = (n: Note): Draft => ({ title: n.title, body: n.body, tags: n.tags, category: n.category, projectId: n.projectId, favorite: n.favorite, taskIds: n.taskIds });
+/** Links (`taskIds`, `itemLinks`) are not part of the draft: the Linked panel saves them directly, so autosave can't undo them. */
+type Draft = Pick<Note, 'title' | 'body' | 'tags' | 'category' | 'projectId' | 'favorite'>;
+const pick = (n: Note): Draft => ({ title: n.title, body: n.body, tags: n.tags, category: n.category, projectId: n.projectId, favorite: n.favorite });
 const AUTOSAVE_MS = 700;
 
 /** Note editor with autosave: edits are committed 0.7s after typing stops, on blur, and before leaving. */
@@ -27,10 +29,6 @@ export function NoteEditor({ note, onBack }: { note: Note; onBack?: () => void }
   const latest = useRef({ d, dirty });
   latest.current = { d, dirty };
   const { saveState, lastSavedAt, saveError, clock24h } = useHQ(useShallow((s) => ({ saveState: s.saveState, lastSavedAt: s.lastSavedAt, saveError: s.saveError, clock24h: s.settings.clock24h })));
-  const tasks = useHQ(useShallow((s) => s.tasks.filter((t) => note.taskIds.includes(t.id))));
-  const linkable = useHQ(useShallow((s) => s.tasks.filter((t) => t.status !== 'completed' && !note.taskIds.includes(t.id))));
-  const sourceIdea = useHQ((s) => (note.source?.kind === 'idea' ? s.ideas.find((i) => i.id === note.source!.id) : undefined));
-  const [linkPick, setLinkPick] = useState('');
 
   const commit = useCallback(() => {
     clearTimeout(timer.current);
@@ -182,27 +180,6 @@ export function NoteEditor({ note, onBack }: { note: Note; onBack?: () => void }
           <Field label="Project" htmlFor="note-project">
             <ProjectSelect id="note-project" value={d.projectId} onChange={(v) => change('projectId', v, true)} />
           </Field>
-          <Field label="Link a task" htmlFor="note-link-task">
-            <div className="flex gap-1">
-              <Select id="note-link-task" value={linkPick} onChange={(e) => setLinkPick(e.target.value)}>
-                <option value="">Choose an open task…</option>
-                {linkable.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.title}
-                  </option>
-                ))}
-              </Select>
-              <Button
-                disabled={!linkPick}
-                onClick={() => {
-                  change('taskIds', [...d.taskIds, linkPick], true);
-                  setLinkPick('');
-                }}
-              >
-                Link
-              </Button>
-            </div>
-          </Field>
         </div>
 
         {(tagHints.length > 0 || catHint) && (
@@ -221,35 +198,10 @@ export function NoteEditor({ note, onBack }: { note: Note; onBack?: () => void }
           </div>
         )}
 
-        {tasks.length > 0 && (
-          <div className="flex flex-col gap-1">
-            <span className="font-mono text-2xs tracking-wider text-muted uppercase">Linked tasks</span>
-            <ul className="border border-line bg-inset">
-              {tasks.map((t) => (
-                <li key={t.id} className="flex items-center gap-2 border-b border-line px-2 py-1 text-sm last:border-b-0">
-                  <button type="button" onClick={() => openEditor({ kind: 'task', id: t.id })} className={cn('min-w-0 flex-1 truncate text-left hover:underline', t.status === 'completed' && 'text-subtle line-through')}>
-                    {t.title}
-                  </button>
-                  <Button size="iconSm" variant="ghost" aria-label={`Unlink ${t.title}`} onClick={() => change('taskIds', d.taskIds.filter((x) => x !== t.id), true)}>
-                    <X className="size-3" />
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        <LinkedItems item={{ kind: 'note', id: note.id }} />
 
         <p className="font-mono text-2xs text-subtle">
           {words} words · created {formatStamp(note.createdAt, clock24h)} · updated {formatStamp(note.updatedAt, clock24h)}
-          {sourceIdea && (
-            <>
-              {' '}
-              · from idea{' '}
-              <button type="button" className="text-accent hover:underline" onClick={() => openEditor({ kind: 'idea', id: sourceIdea.id })}>
-                {ideaTitle(sourceIdea)}
-              </button>
-            </>
-          )}
         </p>
       </div>
     </section>

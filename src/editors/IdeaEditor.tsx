@@ -1,15 +1,17 @@
-import { Archive, ArchiveRestore, FolderKanban, Lightbulb, Link2, ListChecks, NotebookPen, Star, Trash2, Unlink } from 'lucide-react';
+import { Archive, ArchiveRestore, FolderKanban, Lightbulb, Link2, ListChecks, NotebookPen, Star, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { navigate } from '../app/router';
 import { closeEditor, confirmAction, openEditor, toast, touchRecent } from '../app/ui';
-import { convertIdea, deleteIdea, ideaTitle, linkIdeas, unlinkIdeas, updateIdea, useHQ, type ConvertTarget } from '../data/store';
+import { convertIdea, deleteIdea, ideaTitle, updateIdea, useHQ, type ConvertTarget } from '../data/store';
 import { IDEA_KINDS, IDEA_KIND_LABEL, type Idea } from '../data/types';
 import { cn, isHttpUrl } from '../lib/util';
 import { actionableReason, similarity, suggestCategory, suggestTags } from '../organize/rules';
 import { TagInput } from '../ui/bits';
 import { Button, Check, Field, Input, Select, Textarea } from '../ui/controls';
 import { Dialog } from '../ui/Dialog';
+import { LinkedItems } from '../ui/LinkedItems';
+import { linkItems } from '../data/linking';
 import { CategoryDatalist, ProjectSelect, sameJson } from './common';
 
 type Draft = Pick<Idea, 'title' | 'body' | 'kind' | 'url' | 'tags' | 'category' | 'favorite' | 'projectId' | 'remindOn' | 'inbox'>;
@@ -23,7 +25,6 @@ export function IdeaEditor({ id }: { id: string }) {
   const [d, setD] = useState<Draft | null>(initial);
   const [error, setError] = useState<string | null>(null);
   const others = useHQ(useShallow((s) => s.ideas.filter((i) => i.id !== id && !i.archived)));
-  const [pick, setPick] = useState('');
 
   useEffect(() => {
     touchRecent('idea', id);
@@ -53,7 +54,6 @@ export function IdeaEditor({ id }: { id: string }) {
   const tagHints = suggestTags(`${d.title}\n${d.body}`, d.tags);
   const catHint = d.category ? null : suggestCategory(`${d.title}\n${d.body}`);
   const actionable = actionableReason(d.title || d.body);
-  const related = others.filter((o) => idea.relatedIds.includes(o.id));
 
   const save = (close = true) => {
     if (!d.body.trim() && !d.title.trim()) {
@@ -212,61 +212,21 @@ export function IdeaEditor({ id }: { id: string }) {
           </div>
         )}
 
-        <div className="flex flex-col gap-1 sm:col-span-6">
-          <span className="font-mono text-2xs tracking-wider text-muted uppercase">Related ideas</span>
-          {related.length > 0 && (
-            <ul className="border border-line bg-inset">
-              {related.map((r) => (
-                <li key={r.id} className="flex items-center gap-2 border-b border-line px-2 py-1 text-sm last:border-b-0">
-                  <button type="button" className="min-w-0 flex-1 truncate text-left hover:underline" onClick={() => openEditor({ kind: 'idea', id: r.id })}>
-                    {ideaTitle(r)}
-                  </button>
-                  <Button size="xs" variant="ghost" onClick={() => unlinkIdeas(id, r.id)}>
-                    <Unlink className="size-3" aria-hidden="true" /> Unlink
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {similar.length > 0 && (
-            <div className="flex flex-col gap-1 text-xs">
-              <span className="text-subtle">Possibly related (shared words):</span>
-              {similar.map(({ o, shared }) => (
-                <div key={o.id} className="flex items-center gap-2">
-                  <span className="min-w-0 flex-1 truncate">
-                    {ideaTitle(o)} <span className="text-subtle">· {shared.slice(0, 4).join(', ')}</span>
-                  </span>
-                  <Button size="xs" onClick={() => linkIdeas(id, o.id)}>
-                    <Link2 className="size-3" aria-hidden="true" /> Link
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-          {others.length > 0 && (
-            <div className="flex gap-1">
-              <Select value={pick} onChange={(e) => setPick(e.target.value)} aria-label="Idea to link">
-                <option value="">Link another idea…</option>
-                {others
-                  .filter((o) => !idea.relatedIds.includes(o.id))
-                  .map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {ideaTitle(o)}
-                    </option>
-                  ))}
-              </Select>
-              <Button
-                disabled={!pick}
-                onClick={() => {
-                  linkIdeas(id, pick);
-                  setPick('');
-                }}
-              >
-                Link
-              </Button>
-            </div>
-          )}
-        </div>
+        {similar.length > 0 && (
+          <div className="flex flex-col gap-1 text-xs sm:col-span-6">
+            <span className="font-mono text-2xs tracking-wider text-subtle uppercase">Possibly related (local suggestion, shared words):</span>
+            {similar.map(({ o, shared }) => (
+              <div key={o.id} className="flex items-center gap-2">
+                <span className="min-w-0 flex-1 truncate">
+                  {ideaTitle(o)} <span className="text-subtle">· {shared.slice(0, 4).join(', ')}</span>
+                </span>
+                <Button size="xs" onClick={() => linkItems({ kind: 'idea', id }, { kind: 'idea', id: o.id })}>
+                  <Link2 className="size-3" aria-hidden="true" /> Link
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-1.5 border-t border-line pt-2 sm:col-span-6">
           <span className="mr-1 font-mono text-2xs tracking-wider text-muted uppercase">Convert to</span>
@@ -285,6 +245,7 @@ export function IdeaEditor({ id }: { id: string }) {
           Captured {new Date(idea.createdAt).toLocaleString()} · Updated {new Date(idea.updatedAt).toLocaleString()}
         </p>
       </form>
+      <LinkedItems item={{ kind: 'idea', id }} locked={dirty} className="mt-3" />
     </Dialog>
   );
 }

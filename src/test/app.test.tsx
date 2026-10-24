@@ -2,11 +2,12 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { App } from '../App';
 import { navigate, useRoute } from '../app/router';
-import { useUI } from '../app/ui';
+import { openEditor, useUI } from '../app/ui';
 import { buildExport } from '../data/backup';
 import { createMemoryAdapter } from '../data/adapters/memory';
 import { emptyWorkspace } from '../data/defaults';
 import { DEFAULT_WIDGETS } from '../data/defaults';
+import type { Note, Task } from '../data/types';
 import { createNote, createTask, initStore, updateSettings, useHQ } from '../data/store';
 import { clearMatchMedia, mockMatchMedia } from './helpers';
 
@@ -257,6 +258,46 @@ describe('Menu bar', () => {
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('menu')).toBeNull();
     expect(screen.getByRole('menuitem', { name: 'View' })).toHaveFocus();
+  });
+});
+
+describe('Linked panel', () => {
+  it('links a task to a note from the task editor and shows the backlink on the note', async () => {
+    const { user } = await renderApp();
+    let t!: Task;
+    let n!: Note;
+    act(() => {
+      t = createTask({ title: 'Lab report' });
+      n = createNote({ title: 'Lab notes' });
+    });
+    act(() => openEditor({ kind: 'task', id: t.id }));
+    await user.click(within(openDialog()).getByRole('button', { name: '+ Link…' }));
+    await user.type(within(openDialog()).getByRole('textbox', { name: 'Find an item to link' }), 'lab notes');
+    await user.click(within(openDialog()).getByRole('button', { name: /Lab notes/ }));
+    expect(useHQ.getState().notes[0].taskIds).toEqual([t.id]);
+    await user.click(within(openDialog()).getByRole('button', { name: 'Close' }));
+    act(() => navigate('notes', n.id));
+    const panel = await screen.findByRole('region', { name: 'Linked' });
+    expect(within(panel).getByRole('button', { name: 'Lab report' })).toBeInTheDocument();
+    expect(within(panel).getByText('linked task')).toBeInTheDocument();
+  });
+
+  it('note autosave does not undo links added from the panel', async () => {
+    const { user } = await renderApp();
+    let t!: Task;
+    let n!: Note;
+    act(() => {
+      t = createTask({ title: 'Read chapter 4' });
+      n = createNote({ title: 'Reading notes' });
+      navigate('notes', n.id);
+    });
+    const panel = await screen.findByRole('region', { name: 'Linked' });
+    await user.click(within(panel).getByRole('button', { name: '+ Link…' }));
+    await user.type(within(panel).getByRole('textbox', { name: 'Find an item to link' }), 'chapter');
+    await user.click(within(panel).getByRole('button', { name: /Read chapter 4/ }));
+    await user.type(screen.getByRole('textbox', { name: 'Note text' }), 'More thoughts');
+    await waitFor(() => expect(useHQ.getState().notes[0].body).toBe('More thoughts'), { timeout: 3000 });
+    expect(useHQ.getState().notes[0].taskIds).toEqual([t.id]);
   });
 });
 
