@@ -1,32 +1,10 @@
-import {
-  CalendarDays,
-  CalendarPlus,
-  Command,
-  Download,
-  FilePlus2,
-  FolderKanban,
-  FolderPlus,
-  History,
-  Lightbulb,
-  ListChecks,
-  ListTodo,
-  MessageSquareCode,
-  NotebookPen,
-  Palette,
-  Play,
-  Rows3,
-  ScanSearch,
-  type LucideIcon,
-} from 'lucide-react';
+import { CalendarDays, Command, FolderKanban, FolderPlus, Lightbulb, ListChecks, MessageSquareCode, NotebookPen, type LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useToday } from '../app/clock';
-import { downloadBackup } from '../app/backupActions';
-import { toggleFocus, useFocus } from '../app/focus';
 import { navigate } from '../app/router';
-import { closeCommand, openCapture, openEditor, openOrganize, toast, useUI } from '../app/ui';
-import { createIdea, createNote, createProject, createTask, ideaTitle, updateSettings, useHQ } from '../data/store';
-import { THEMES, THEME_LABEL } from '../data/types';
+import { closeCommand, openEditor, toast, useUI } from '../app/ui';
+import { createIdea, createNote, createProject, createTask, ideaTitle, useHQ } from '../data/store';
 import { formatDate, relativeDay } from '../lib/dates';
 import { parseQuickTask } from '../lib/quickAdd';
 import { scoreMatch } from '../lib/search';
@@ -34,7 +12,7 @@ import { cn, firstLine } from '../lib/util';
 import { Kbd } from '../ui/bits';
 import { Dialog } from '../ui/Dialog';
 import { useRecentResolved } from '../features/utilities/tools';
-import { NAV_ITEMS } from './nav';
+import { useAppCommands } from './commands';
 
 export interface CommandItem {
   id: string;
@@ -46,62 +24,12 @@ export interface CommandItem {
   run: () => void;
 }
 
-const GROUP_ORDER = ['Create', 'Recent', 'Tasks', 'Projects', 'Notes', 'Ideas', 'Events', 'Prompts', 'Go to', 'Commands'];
+const GROUP_ORDER = ['Create', 'Recent', 'Tasks', 'Projects', 'Notes', 'Ideas', 'Events', 'Prompts', 'Views', 'Go to', 'Commands', 'Claude'];
 const PER_GROUP = 6;
 
 function useStaticCommands(): CommandItem[] {
-  const settings = useHQ((s) => s.settings);
-  const focusRunning = useFocus((s) => s.running);
-  return useMemo(() => {
-    const nextTheme = THEMES[(THEMES.indexOf(settings.theme) + 1) % THEMES.length];
-    const showTasks = (view: 'myday' | 'upcoming' | 'overdue' | 'all' | 'completed') => () => {
-      useUI.setState({ taskViewRequest: view });
-      navigate('tasks');
-    };
-    const create: CommandItem[] = [
-      { id: 'new-task', group: 'Create', label: 'New task', icon: ListChecks, keywords: 'add todo', run: () => openEditor({ kind: 'task' }) },
-      { id: 'new-idea', group: 'Create', label: 'Capture idea', icon: Lightbulb, keywords: 'brain dump inbox quick', run: () => openCapture('idea') },
-      { id: 'new-note', group: 'Create', label: 'New note', icon: FilePlus2, keywords: 'write document', run: () => navigate('notes', createNote().id) },
-      { id: 'new-project', group: 'Create', label: 'New project', icon: FolderPlus, run: () => openEditor({ kind: 'project' }) },
-      { id: 'new-event', group: 'Create', label: 'New calendar event', icon: CalendarPlus, keywords: 'deadline appointment', run: () => openEditor({ kind: 'event' }) },
-      { id: 'new-prompt', group: 'Create', label: 'New prompt', icon: MessageSquareCode, keywords: 'prompt library', run: () => openEditor({ kind: 'prompt' }) },
-    ];
-    const go: CommandItem[] = NAV_ITEMS.map((n) => ({ id: `go-${n.section}`, group: 'Go to', label: `Go to ${n.label}`, hint: `G ${n.key.toUpperCase()}`, icon: n.icon, keywords: n.section, run: () => navigate(n.section) }));
-    const commands: CommandItem[] = [
-      { id: 'cmd-overdue', group: 'Commands', label: 'Show overdue tasks', icon: ListTodo, run: showTasks('overdue') },
-      { id: 'cmd-upcoming', group: 'Commands', label: 'Show upcoming deadlines', icon: ListTodo, run: showTasks('upcoming') },
-      { id: 'cmd-completed', group: 'Commands', label: 'Show completed tasks', icon: ListTodo, run: showTasks('completed') },
-      { id: 'cmd-today-cal', group: 'Commands', label: 'Open today in the calendar', icon: CalendarDays, run: () => navigate('calendar') },
-      { id: 'cmd-organize', group: 'Commands', label: 'Run organization review (local suggestions)', icon: ScanSearch, keywords: 'tags suggest similar cleanup', run: openOrganize },
-      { id: 'cmd-focus', group: 'Commands', label: focusRunning ? 'Pause focus timer' : 'Start focus timer', icon: Play, keywords: 'pomodoro timer', run: toggleFocus },
-      { id: 'cmd-theme', group: 'Commands', label: `Switch theme to ${THEME_LABEL[nextTheme]}`, icon: Palette, keywords: 'appearance dark light color', run: () => updateSettings({ theme: nextTheme }) },
-      {
-        id: 'cmd-density',
-        group: 'Commands',
-        label: `Switch to ${settings.density === 'compact' ? 'comfortable' : 'compact'} density`,
-        icon: Rows3,
-        keywords: 'size spacing',
-        run: () => updateSettings({ density: settings.density === 'compact' ? 'comfortable' : 'compact' }),
-      },
-      {
-        id: 'cmd-export',
-        group: 'Commands',
-        label: 'Export backup (.json)',
-        icon: Download,
-        keywords: 'download save json',
-        run: async () => {
-          const outcome = await downloadBackup();
-          if (outcome === 'saved') toast('Backup saved');
-          else if (outcome === 'unavailable') {
-            toast('Downloads are not available here. Use Copy JSON in Settings › Data.', 'error');
-            navigate('prefs');
-          }
-        },
-      },
-      { id: 'cmd-activity', group: 'Commands', label: 'Show activity log', icon: History, run: () => navigate('activity') },
-    ];
-    return [...create, ...go, ...commands];
-  }, [settings.theme, settings.density, focusRunning]);
+  const commands = useAppCommands();
+  return useMemo(() => commands.map((c) => ({ id: c.id, group: c.group, label: c.label, icon: c.icon, keywords: c.keywords, run: c.run })), [commands]);
 }
 
 export function CommandBar() {

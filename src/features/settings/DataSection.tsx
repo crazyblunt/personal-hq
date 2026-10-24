@@ -169,7 +169,7 @@ export function DataSection() {
             >
               <Copy className="size-3.5" aria-hidden="true" /> Copy JSON
             </Button>
-            <Button onClick={() => fileRef.current?.click()}>
+            <Button id="import-json" onClick={() => fileRef.current?.click()}>
               <Upload className="size-3.5" aria-hidden="true" /> Import JSON…
             </Button>
             <input
