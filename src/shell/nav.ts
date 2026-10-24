@@ -1,4 +1,4 @@
-import { Activity, CalendarDays, FolderKanban, Inbox, Lightbulb, ListChecks, NotebookPen, Settings, Sun, Wrench, type LucideIcon } from 'lucide-react';
+import { Activity, CalendarDays, FolderKanban, Inbox, Lightbulb, ListChecks, NotebookPen, Settings, Sun, Table2, Wrench, type LucideIcon } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useToday } from '../app/clock';
 import { calendarItems, isMyDayTask, isOpenTask, isOverdue } from '../data/selectors';
@@ -21,6 +21,7 @@ export const NAV_ITEMS: NavItem[] = [
   { section: 'ideas', label: SECTION_LABEL.ideas, icon: Lightbulb, key: 'e' },
   { section: 'projects', label: SECTION_LABEL.projects, icon: FolderKanban, key: 'p' },
   { section: 'notes', label: SECTION_LABEL.notes, icon: NotebookPen, key: 'n' },
+  { section: 'explorer', label: SECTION_LABEL.explorer, icon: Table2, key: 'x' },
   { section: 'activity', label: SECTION_LABEL.activity, icon: Activity, key: 'a' },
   { section: 'utilities', label: SECTION_LABEL.utilities, icon: Wrench, key: 'u' },
   { section: 'prefs', label: SECTION_LABEL.prefs, icon: Settings, key: 's' },

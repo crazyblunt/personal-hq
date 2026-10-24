@@ -18,6 +18,7 @@ import { EditorHost } from './editors/EditorHost';
 import { CaptureDialog } from './editors/CaptureDialog';
 import { ActivityPage } from './features/activity/ActivityPage';
 import { CalendarPage } from './features/calendar/CalendarPage';
+import { ExplorerPage } from './features/explorer/ExplorerPage';
 import { IdeasPage } from './features/ideas/IdeasPage';
 import { InboxPage } from './features/inbox/InboxPage';
 import { MyDayPage } from './features/myday/MyDayPage';
@@ -42,6 +43,7 @@ const PAGES: Record<SectionId, () => JSX.Element> = {
   ideas: IdeasPage,
   projects: ProjectsPage,
   notes: NotesPage,
+  explorer: ExplorerPage,
   activity: ActivityPage,
   utilities: UtilitiesPage,
   prefs: SettingsPage,

@@ -301,6 +301,7 @@ export const SECTIONS = [
   'ideas',
   'projects',
   'notes',
+  'explorer',
   'activity',
   'utilities',
   'prefs',

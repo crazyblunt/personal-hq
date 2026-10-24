@@ -49,6 +49,8 @@ interface UIState {
   /** My Day is in customize (arrange) mode. */
   myDayCustomize: boolean;
   shortcutsOpen: boolean;
+  /** Something outside Explorer asked it to show a search, a tag, or a saved view. */
+  explorerRequest: { query?: string; tag?: string; viewId?: string } | null;
 }
 
 const RECENT_LIMIT = 20;
@@ -65,6 +67,7 @@ export const useUI = create<UIState>(() => ({
   taskViewRequest: null,
   myDayCustomize: false,
   shortcutsOpen: false,
+  explorerRequest: null,
 }));
 
 export const openEditor = (editor: EditorState) => useUI.setState({ editor, commandOpen: false });
@@ -79,6 +82,7 @@ export const setSidebarOpen = (sidebarOpen: boolean) => useUI.setState({ sidebar
 export const setMyDayCustomize = (myDayCustomize: boolean) => useUI.setState({ myDayCustomize });
 export const openShortcuts = () => useUI.setState({ shortcutsOpen: true, commandOpen: false });
 export const closeShortcuts = () => useUI.setState({ shortcutsOpen: false });
+export const setExplorerRequest = (explorerRequest: UIState['explorerRequest']) => useUI.setState({ explorerRequest });
 
 /** Asks before something destructive. The action only runs if the user confirms in the dialog. */
 export const confirmAction = (req: ConfirmRequest) => useUI.setState({ confirm: req });

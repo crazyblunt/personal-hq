@@ -23,6 +23,7 @@ import {
   Rows3,
   ScanSearch,
   Sun,
+  Table2,
   Upload,
   type LucideIcon,
 } from 'lucide-react';
@@ -31,7 +32,7 @@ import { downloadBackup } from '../app/backupActions';
 import { useToday } from '../app/clock';
 import { toggleFocus, useFocus } from '../app/focus';
 import { navigate } from '../app/router';
-import { openCapture, openCommand, openEditor, openOrganize, openShortcuts, setMyDayCustomize, toast, useUI } from '../app/ui';
+import { openCapture, openCommand, openEditor, openOrganize, openShortcuts, setExplorerRequest, setMyDayCustomize, toast, useUI } from '../app/ui';
 import { createNote, updateSettings, useHQ } from '../data/store';
 import { THEMES, THEME_LABEL } from '../data/types';
 import { NAV_ITEMS } from './nav';
@@ -62,6 +63,7 @@ export function useAppCommands(): AppCommand[] {
   const today = useToday();
   const density = useHQ((s) => s.settings.density);
   const focusRunning = useFocus((s) => s.running);
+  const views = useHQ((s) => s.settings.views);
   return useMemo(() => {
     const showTasks = (view: 'myday' | 'upcoming' | 'overdue' | 'all' | 'completed') => () => {
       useUI.setState({ taskViewRequest: view });
@@ -128,6 +130,17 @@ export function useAppCommands(): AppCommand[] {
       },
       { id: 'cmd-activity', group: 'Commands', label: 'Show activity log', icon: History, run: () => navigate('activity') },
     ];
-    return [...create, ...go, ...commands, ...themes];
-  }, [today, density, focusRunning]);
+    const viewCommands: AppCommand[] = views.map((v) => ({
+      id: `view-${v.id}`,
+      group: 'Views',
+      label: `Open view: ${v.name}`,
+      icon: Table2,
+      keywords: 'explorer saved filter',
+      run: () => {
+        setExplorerRequest({ viewId: v.id });
+        navigate('explorer');
+      },
+    }));
+    return [...create, ...go, ...viewCommands, ...commands, ...themes];
+  }, [today, density, focusRunning, views]);
 }

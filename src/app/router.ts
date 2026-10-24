@@ -19,6 +19,7 @@ export const SECTION_LABEL: Record<SectionId, string> = {
   ideas: 'Ideas',
   projects: 'Projects',
   notes: 'Notes',
+  explorer: 'Explorer',
   activity: 'Activity',
   utilities: 'Utilities',
   prefs: 'Settings',

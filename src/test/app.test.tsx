@@ -8,7 +8,7 @@ import { createMemoryAdapter } from '../data/adapters/memory';
 import { emptyWorkspace } from '../data/defaults';
 import { DEFAULT_WIDGETS } from '../data/defaults';
 import type { Note, Task } from '../data/types';
-import { createNote, createTask, initStore, updateSettings, useHQ } from '../data/store';
+import { createIdea, createNote, createTask, initStore, updateSettings, useHQ } from '../data/store';
 import { clearMatchMedia, mockMatchMedia } from './helpers';
 
 async function renderApp() {
@@ -298,6 +298,62 @@ describe('Linked panel', () => {
     await user.type(screen.getByRole('textbox', { name: 'Note text' }), 'More thoughts');
     await waitFor(() => expect(useHQ.getState().notes[0].body).toBe('More thoughts'), { timeout: 3000 });
     expect(useHQ.getState().notes[0].taskIds).toEqual([t.id]);
+  });
+});
+
+describe('Explorer', () => {
+  it('lists all item types and filters by tag', async () => {
+    const { user } = await renderApp();
+    act(() => {
+      createTask({ title: 'Essay', tags: ['school'] });
+      createNote({ title: 'Reading', tags: ['school'] });
+      createIdea({ body: 'Garden #home' });
+    });
+    await user.keyboard('gx');
+    const table = await screen.findByRole('table', { name: 'Items' });
+    expect(within(table).getAllByRole('row')).toHaveLength(4); // header + 3
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Filter by tag' }), 'school');
+    expect(within(table).getAllByRole('row')).toHaveLength(3);
+  });
+
+  it('saves a view and opens it from the command bar', async () => {
+    const { user } = await renderApp();
+    act(() => navigate('explorer'));
+    await user.click(await screen.findByRole('button', { name: 'Save view' }));
+    await user.type(screen.getByRole('textbox', { name: 'View name' }), 'Everything{Enter}');
+    expect(useHQ.getState().settings.views.map((v) => v.name)).toEqual(['Everything']);
+    act(() => navigate('myday'));
+    await user.keyboard('{Control>}k{/Control}');
+    await user.type(await screen.findByRole('combobox'), 'open view');
+    await user.keyboard('{Enter}');
+    expect(useRoute.getState().section).toBe('explorer');
+    expect(await screen.findByRole('tab', { name: 'Everything', selected: true })).toBeInTheDocument();
+  });
+
+  it('renames a tag from the Tags tab after confirming', async () => {
+    const { user } = await renderApp();
+    act(() => {
+      createTask({ title: 'A', tags: ['hw'] });
+      navigate('explorer');
+    });
+    await user.click(await screen.findByRole('radio', { name: /Tags/ }));
+    await user.click(screen.getByRole('button', { name: 'Rename #hw' }));
+    await user.clear(screen.getByRole('textbox', { name: 'New name for #hw' }));
+    await user.type(screen.getByRole('textbox', { name: 'New name for #hw' }), 'homework{Enter}');
+    await user.click(within(openDialog()).getByRole('button', { name: 'Rename' }));
+    expect(useHQ.getState().tasks[0].tags).toEqual(['homework']);
+  });
+
+  it('command bar search offers all results in Explorer', async () => {
+    const { user } = await renderApp();
+    act(() => {
+      createTask({ title: 'Biology lab' });
+    });
+    await user.keyboard('{Control>}k{/Control}');
+    await user.type(await screen.findByRole('combobox'), 'biology');
+    await user.click(screen.getByRole('option', { name: /See all results in Explorer/ }));
+    expect(useRoute.getState().section).toBe('explorer');
+    expect(await screen.findByRole('searchbox', { name: 'Search everything' })).toHaveValue('biology');
   });
 });
 

@@ -1,9 +1,9 @@
-import { CalendarDays, Command, FolderKanban, FolderPlus, Lightbulb, ListChecks, MessageSquareCode, NotebookPen, type LucideIcon } from 'lucide-react';
+import { CalendarDays, Command, FolderKanban, FolderPlus, Lightbulb, ListChecks, MessageSquareCode, NotebookPen, Table2, type LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useToday } from '../app/clock';
 import { navigate } from '../app/router';
-import { closeCommand, openEditor, toast, useUI } from '../app/ui';
+import { closeCommand, openEditor, setExplorerRequest, toast, useUI } from '../app/ui';
 import { createIdea, createNote, createProject, createTask, ideaTitle, useHQ } from '../data/store';
 import { formatDate, relativeDay } from '../lib/dates';
 import { parseQuickTask } from '../lib/quickAdd';
@@ -149,8 +149,19 @@ export function CommandBar() {
     const groups = [...byGroup.entries()].sort((a, b) => Math.max(...b[1].map((x) => x.score)) - Math.max(...a[1].map((x) => x.score)) || GROUP_ORDER.indexOf(a[0]) - GROUP_ORDER.indexOf(b[0]));
     const searchHits: CommandItem[] = [];
     for (const [, list] of groups) searchHits.push(...list.sort((a, b) => b.score - a.score).slice(0, PER_GROUP + 4));
-    // Matches first, then the "create from what you typed" options.
-    return commandsOnly ? searchHits : [...searchHits, ...out];
+    // Matches first, then the "create from what you typed" options, then the full search.
+    const seeAll: CommandItem = {
+      id: 'explorer-search',
+      group: 'Search',
+      label: 'See all results in Explorer',
+      hint: q.length > 24 ? `${q.slice(0, 24)}…` : q,
+      icon: Table2,
+      run: () => {
+        setExplorerRequest({ query: q });
+        navigate('explorer');
+      },
+    };
+    return commandsOnly ? searchHits : [...searchHits, ...out, seeAll];
   }, [query, staticCommands, recent, data, today]);
 
   useEffect(() => setActive(0), [query]);
