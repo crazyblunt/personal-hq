@@ -48,6 +48,7 @@ interface UIState {
   taskViewRequest: 'myday' | 'upcoming' | 'overdue' | 'all' | 'completed' | null;
   /** My Day is in customize (arrange) mode. */
   myDayCustomize: boolean;
+  shortcutsOpen: boolean;
 }
 
 const RECENT_LIMIT = 20;
@@ -63,6 +64,7 @@ export const useUI = create<UIState>(() => ({
   sidebarOpen: false,
   taskViewRequest: null,
   myDayCustomize: false,
+  shortcutsOpen: false,
 }));
 
 export const openEditor = (editor: EditorState) => useUI.setState({ editor, commandOpen: false });
@@ -75,6 +77,8 @@ export const openOrganize = () => useUI.setState({ organizeOpen: true, commandOp
 export const closeOrganize = () => useUI.setState({ organizeOpen: false });
 export const setSidebarOpen = (sidebarOpen: boolean) => useUI.setState({ sidebarOpen });
 export const setMyDayCustomize = (myDayCustomize: boolean) => useUI.setState({ myDayCustomize });
+export const openShortcuts = () => useUI.setState({ shortcutsOpen: true, commandOpen: false });
+export const closeShortcuts = () => useUI.setState({ shortcutsOpen: false });
 
 /** Asks before something destructive. The action only runs if the user confirms in the dialog. */
 export const confirmAction = (req: ConfirmRequest) => useUI.setState({ confirm: req });

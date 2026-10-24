@@ -31,7 +31,7 @@ import { downloadBackup } from '../app/backupActions';
 import { useToday } from '../app/clock';
 import { toggleFocus, useFocus } from '../app/focus';
 import { navigate } from '../app/router';
-import { openCapture, openCommand, openEditor, openOrganize, setMyDayCustomize, toast, useUI } from '../app/ui';
+import { openCapture, openCommand, openEditor, openOrganize, openShortcuts, setMyDayCustomize, toast, useUI } from '../app/ui';
 import { createNote, updateSettings, useHQ } from '../data/store';
 import { THEMES, THEME_LABEL } from '../data/types';
 import { NAV_ITEMS } from './nav';
@@ -81,7 +81,7 @@ export function useAppCommands(): AppCommand[] {
     const commands: AppCommand[] = [
       { id: 'capture', group: 'Commands', label: 'Quick capture (idea, task, or note)', icon: Plus, keywords: 'capture brain dump', run: () => openCapture('idea') },
       { id: 'open-command', group: 'Commands', label: 'Open the command bar', icon: Command, keywords: 'search run', run: openCommand },
-      { id: 'show-shortcuts', group: 'Commands', label: 'Keyboard shortcuts', icon: Keyboard, keywords: 'keys help hotkeys', run: () => navigate('prefs') },
+      { id: 'show-shortcuts', group: 'Commands', label: 'Keyboard shortcuts', icon: Keyboard, keywords: 'keys help hotkeys', run: openShortcuts },
       { id: 'customize-myday', group: 'Commands', label: 'Customize My Day layout', icon: LayoutGrid, keywords: 'arrange widgets dashboard grid', run: () => {
         setMyDayCustomize(true);
         navigate('myday');

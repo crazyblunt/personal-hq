@@ -13,7 +13,7 @@ import { clearMatchMedia, mockMatchMedia } from './helpers';
 async function renderApp() {
   location.hash = '';
   await initStore(createMemoryAdapter());
-  useUI.setState({ editor: null, commandOpen: false, capture: null, organizeOpen: false, confirm: null, toasts: [], myDayCustomize: false });
+  useUI.setState({ editor: null, commandOpen: false, capture: null, organizeOpen: false, confirm: null, toasts: [], myDayCustomize: false, shortcutsOpen: false });
   const user = userEvent.setup();
   const utils = render(<App />);
   await screen.findByRole('heading', { name: 'My Day', level: 1 });
@@ -202,3 +202,34 @@ describe('My Day grid', () => {
     expect(screen.getByRole('region', { name: 'Clock' })).toBeInTheDocument();
   });
 });
+
+describe('Keyboard shortcuts', () => {
+  it('? opens a filterable shortcuts panel', async () => {
+    const { user } = await renderApp();
+    await user.keyboard('?');
+    const dlg = await screen.findByRole('dialog', { name: 'Keyboard shortcuts' });
+    await user.type(within(dlg).getByRole('searchbox', { name: 'Filter shortcuts' }), 'capture');
+    expect(within(dlg).getByText('Quick capture')).toBeInTheDocument();
+    expect(within(dlg).queryByText('Go to Tasks')).toBeNull();
+  });
+
+  it('shows shortcuts next to commands in the command bar', async () => {
+    const { user } = await renderApp();
+    await user.keyboard('{Control>}k{/Control}');
+    await user.type(await screen.findByRole('combobox'), '>go to tasks');
+    expect(screen.getByRole('option', { name: /Go to Tasks/ })).toHaveTextContent('G T');
+    await user.clear(screen.getByRole('combobox'));
+    await user.type(screen.getByRole('combobox'), '>keyboard');
+    expect(screen.getByRole('option', { name: /Keyboard shortcuts/ })).toHaveTextContent('?');
+  });
+
+  it('Ctrl+Enter saves the open editor', async () => {
+    const { user } = await renderApp();
+    await user.keyboard('n');
+    await user.type(within(openDialog()).getByLabelText('Title'), 'Ship it');
+    await user.keyboard('{Control>}{Enter}{/Control}');
+    await waitFor(() => expect(useHQ.getState().tasks.map((t) => t.title)).toContain('Ship it'));
+    expect(useHQ.getState().tasks[0].myDay).not.toBeNull();
+  });
+});
+

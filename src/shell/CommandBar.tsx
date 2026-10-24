@@ -13,6 +13,7 @@ import { Kbd } from '../ui/bits';
 import { Dialog } from '../ui/Dialog';
 import { useRecentResolved } from '../features/utilities/tools';
 import { useAppCommands } from './commands';
+import { shortcutFor } from '../app/shortcuts';
 
 export interface CommandItem {
   id: string;
@@ -29,7 +30,7 @@ const PER_GROUP = 6;
 
 function useStaticCommands(): CommandItem[] {
   const commands = useAppCommands();
-  return useMemo(() => commands.map((c) => ({ id: c.id, group: c.group, label: c.label, icon: c.icon, keywords: c.keywords, run: c.run })), [commands]);
+  return useMemo(() => commands.map((c) => ({ id: c.id, group: c.group, label: c.label, hint: shortcutFor(c.id)?.join(' '), icon: c.icon, keywords: c.keywords, run: c.run })), [commands]);
 }
 
 export function CommandBar() {

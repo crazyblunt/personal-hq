@@ -80,6 +80,14 @@ export function Dialog({ open, onClose, title, icon, children, footer, size = 'm
         else requestClose();
       }}
       onClose={onNativeClose}
+      onKeyDown={(e) => {
+        // ⌘/Ctrl+Enter saves any editor window: it submits the window's form.
+        if (e.defaultPrevented || e.key !== 'Enter' || !(e.metaKey || e.ctrlKey)) return;
+        const form = ref.current?.querySelector('form');
+        if (!form) return;
+        e.preventDefault();
+        form.requestSubmit();
+      }}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) requestClose();
       }}

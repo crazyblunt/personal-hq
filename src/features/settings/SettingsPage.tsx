@@ -1,13 +1,14 @@
 import { Bot, Keyboard, LayoutGrid, Palette, Settings, SlidersHorizontal } from 'lucide-react';
-import { MOD_KEY } from '../../app/platform';
 import { navigate, SECTION_LABEL } from '../../app/router';
-import { confirmAction, setMyDayCustomize } from '../../app/ui';
+import { confirmAction, openShortcuts, setMyDayCustomize } from '../../app/ui';
+import { SHORTCUTS } from '../../app/shortcuts';
+import { ShortcutList } from '../../shell/ShortcutsDialog';
 import { DEFAULT_WIDGETS } from '../../data/defaults';
 import { updateSettings, useHQ } from '../../data/store';
 import { ACCENTS, PRIORITIES, PRIORITY_LABEL, SECTIONS, THEMES, THEME_LABEL, type AccentName, type Density, type ThemeName } from '../../data/types';
 import { providers } from '../../organize/provider';
 import { cn } from '../../lib/util';
-import { Kbd, PageHeader, Panel, Segmented } from '../../ui/bits';
+import { PageHeader, Panel, Segmented } from '../../ui/bits';
 import { Button, Check, Field, Select } from '../../ui/controls';
 import { WIDGETS } from '../myday/widgets';
 import { showWidget } from '../myday/WidgetGrid';
@@ -26,15 +27,6 @@ const THEME_SWATCH: Record<ThemeName, string[]> = {
 };
 const ACCENT_HEX: Record<AccentName, string> = { green: '#4f7a45', amber: '#8a6420', purple: '#5d4f8c', blue: '#3f6491', teal: '#2f716c', rust: '#8c4a32' };
 
-const SHORTCUTS: [string[], string][] = [
-  [[MOD_KEY, 'K'], 'Open the command bar (search, navigate, create, run commands)'],
-  [['/'], 'Open the command bar when not typing in a field'],
-  [['C'], 'Quick capture when not typing in a field'],
-  [['G', '…'], 'Go to a section: G then D My Day, I Inbox, T Tasks, C Calendar, E Ideas, P Projects, N Notes, A Activity, U Utilities, S Settings'],
-  [['Enter'], 'Save quick-add, capture, and command bar entries'],
-  [['Esc'], 'Close the command bar or a window (asks first if you have unsaved edits)'],
-  [['↑', '↓'], 'Move through command bar results'],
-];
 
 export function SettingsPage() {
   const s = useHQ((st) => st.settings);
@@ -174,20 +166,19 @@ export function SettingsPage() {
             </ul>
           </Panel>
 
-          <Panel title="Keyboard" icon={<Keyboard />}>
-            <ul className="flex flex-col gap-1 p-2 text-sm">
-              {SHORTCUTS.map(([keys, what]) => (
-                <li key={what} className="flex items-start gap-2">
-                  <span className="flex w-24 shrink-0 gap-0.5">
-                    {keys.map((k) => (
-                      <Kbd key={k}>{k}</Kbd>
-                    ))}
-                  </span>
-                  <span className="text-muted">{what}</span>
-                </li>
-              ))}
-            </ul>
-            <p className="border-t border-line px-2 py-1 text-2xs text-subtle">Navigation keys: {NAV_ITEMS.map((n) => `${n.key.toUpperCase()} ${n.label}`).join(' · ')}</p>
+          <Panel
+            title="Keyboard"
+            icon={<Keyboard />}
+            tools={
+              <Button size="sm" onClick={openShortcuts}>
+                Show all shortcuts (?)
+              </Button>
+            }
+          >
+            <div className="p-2">
+              <ShortcutList items={SHORTCUTS.filter((sc) => sc.group !== 'Navigation')} />
+              <p className="mt-2 border-t border-line pt-1 text-2xs text-subtle">Go to a section: G then {NAV_ITEMS.map((n) => `${n.key.toUpperCase()} ${n.label}`).join(' · ')}</p>
+            </div>
           </Panel>
         </div>
 

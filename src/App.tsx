@@ -29,6 +29,7 @@ import { UtilitiesPage } from './features/utilities/UtilitiesPage';
 import { OrganizeDialog } from './organize/OrganizeDialog';
 import { CommandBar } from './shell/CommandBar';
 import { Shell } from './shell/Shell';
+import { ShortcutsDialog } from './shell/ShortcutsDialog';
 import { ConfirmHost } from './ui/Dialog';
 import { cn } from './lib/util';
 import { relativeTime } from './lib/dates';
@@ -290,6 +291,7 @@ export function App() {
       <CaptureDialog />
       <CommandBar />
       <OrganizeDialog />
+      <ShortcutsDialog />
       <ConfirmHost />
       <Toasts />
     </>
