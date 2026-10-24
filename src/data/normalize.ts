@@ -5,7 +5,7 @@
  * a missing list) are fixed and reported as warnings.
  */
 import { isDateKey, toDateKey } from '../lib/dates';
-import { defaultSettings, DEFAULT_WIDGETS } from './defaults';
+import { defaultSettings, DEFAULT_WIDGETS, placeWidgets } from './defaults';
 import {
   ACCENTS,
   ACTIVITY_ACTIONS,
@@ -361,14 +361,21 @@ function widgets(v: unknown): WidgetPref[] {
   for (const w of saved) {
     if (typeof w.id !== 'string' || !(WIDGET_IDS as readonly string[]).includes(w.id) || seen.has(w.id)) continue;
     seen.add(w.id);
-    out.push({
+    const pref: WidgetPref = {
       id: w.id as WidgetPref['id'],
       enabled: w.enabled !== false,
       size: (WIDGET_SIZES as readonly string[]).includes(w.size as string) ? (w.size as WidgetPref['size']) : 'sm',
-    });
+    };
+    // A saved grid position is used only when all four values make sense; otherwise the widget is placed again.
+    const [x, y, cw, ch] = [w.x, w.y, w.w, w.h];
+    if ([x, y, cw, ch].every((v) => typeof v === 'number' && Number.isFinite(v)) && (x as number) >= 0 && (y as number) >= 0 && (cw as number) >= 1 && (ch as number) >= 1) {
+      Object.assign(pref, { x, y, w: cw, h: ch });
+    }
+    out.push(pref);
   }
-  for (const d of DEFAULT_WIDGETS) if (!seen.has(d.id)) out.push({ ...d });
-  return out;
+  // Widgets this copy has never seen join after the saved ones, placed like any widget without a position.
+  for (const d of DEFAULT_WIDGETS) if (!seen.has(d.id)) out.push({ id: d.id, enabled: d.enabled, size: d.size });
+  return placeWidgets(out);
 }
 
 function shortcuts(v: unknown): Shortcut[] {

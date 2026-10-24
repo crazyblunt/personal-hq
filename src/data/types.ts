@@ -311,7 +311,13 @@ export type WidgetSize = (typeof WIDGET_SIZES)[number];
 export interface WidgetPref {
   id: WidgetId;
   enabled: boolean;
+  /** Width class kept for older copies of the app; derived from `w`. */
   size: WidgetSize;
+  /** Position and size on the 12-column My Day grid, in cells. */
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
 }
 
 export interface Shortcut {
