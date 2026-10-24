@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from '../App';
-import { navigate } from '../app/router';
+import { navigate, useRoute } from '../app/router';
 import { useUI } from '../app/ui';
 import { buildExport } from '../data/backup';
 import { createMemoryAdapter } from '../data/adapters/memory';
@@ -230,6 +230,32 @@ describe('Keyboard shortcuts', () => {
     await user.keyboard('{Control>}{Enter}{/Control}');
     await waitFor(() => expect(useHQ.getState().tasks.map((t) => t.title)).toContain('Ship it'));
     expect(useHQ.getState().tasks[0].myDay).not.toBeNull();
+  });
+});
+
+describe('Menu bar', () => {
+  afterEach(() => clearMatchMedia());
+
+  it('opens with a click and runs items from the keyboard', async () => {
+    mockMatchMedia(true);
+    const { user } = await renderApp();
+    await user.click(screen.getByRole('menuitem', { name: 'Go' }));
+    const menu = screen.getByRole('menu', { name: 'Go' });
+    expect(within(menu).getByRole('menuitem', { name: /Tasks/ })).toHaveTextContent('G T');
+    await user.keyboard('{ArrowDown}{ArrowDown}{Enter}');
+    expect(useRoute.getState().section).toBe('inbox');
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
+
+  it('moves between menus with the arrow keys and closes with Escape', async () => {
+    mockMatchMedia(true);
+    const { user } = await renderApp();
+    await user.click(screen.getByRole('menuitem', { name: 'File' }));
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('menu', { name: 'View' })).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('menu')).toBeNull();
+    expect(screen.getByRole('menuitem', { name: 'View' })).toHaveFocus();
   });
 });
 

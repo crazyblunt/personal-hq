@@ -1,16 +1,17 @@
-import { Command, Menu, Plus, Timer, X } from 'lucide-react';
+import { Command, Keyboard, Menu, Plus, Timer, X } from 'lucide-react';
 import { useEffect, type ReactNode } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useMinuteNow, useNow } from '../app/clock';
 import { focusRemaining, useFocus } from '../app/focus';
 import { MOD_KEY } from '../app/platform';
 import { navigate, SECTION_LABEL, useRoute } from '../app/router';
-import { openCapture, openCommand, setSidebarOpen, useUI } from '../app/ui';
+import { openCapture, openCommand, openShortcuts, setSidebarOpen, useUI } from '../app/ui';
 import { useHQ } from '../data/store';
 import { useSync } from '../sync/controller';
 import { formatClock, formatDuration } from '../lib/dates';
 import { cn } from '../lib/util';
 import { ColorSquare, Kbd } from '../ui/bits';
+import { MenuBar } from './MenuBar';
 import { countFor, NAV_ITEMS, useNavCounts, type NavItem } from './nav';
 
 
@@ -46,7 +47,8 @@ function TitleBar() {
         <AppMark />
         <span className="truncate text-sm font-bold">Personal HQ</span>
       </a>
-      <span className="hidden truncate text-sm text-muted sm:inline">— {SECTION_LABEL[route.section]}</span>
+      <MenuBar />
+      <span className="hidden truncate text-sm text-muted sm:inline lg:hidden">— {SECTION_LABEL[route.section]}</span>
       <div className="ml-auto flex items-center gap-1">
         <MobileSaveDot />
         <button
@@ -193,6 +195,16 @@ function Drawer() {
           </button>
         </div>
         <SidebarBody onPick={() => setSidebarOpen(false)} />
+        <button
+          type="button"
+          onClick={() => {
+            setSidebarOpen(false);
+            openShortcuts();
+          }}
+          className="flex h-7 shrink-0 items-center gap-2 border-t border-line px-2 text-sm text-muted hover:bg-bar hover:text-fg"
+        >
+          <Keyboard className="size-3.5" aria-hidden="true" /> Keyboard shortcuts
+        </button>
       </aside>
     </div>
   );
