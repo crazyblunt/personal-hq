@@ -9,7 +9,8 @@ import { backupDue, snoozeBackupReminder, totalRecords, useStorageHealth } from 
 import { useMinuteNow } from './app/clock';
 import { isTypingTarget } from './app/platform';
 import { navigate, startRouter, useRoute } from './app/router';
-import { anyModalOpen, closeCommand, openCommand, useUI } from './app/ui';
+import { anyModalOpen, closeCommand, dismissToast, openCommand, useUI } from './app/ui';
+import { loadBatches } from './data/batches';
 import { matchShortcut } from './app/shortcuts';
 import { findCommand, useAppCommands } from './shell/commands';
 import { dismissIssues, flush, hasUnsavedChanges, useHQ } from './data/store';
@@ -97,6 +98,18 @@ function Toasts() {
           <div key={t.id} role={t.tone === 'error' ? 'alert' : 'status'} className="pointer-events-auto flex max-w-md items-center gap-2 bevel-out bg-bar px-2.5 py-1.5 text-sm shadow-[2px_2px_0_rgb(0_0_0/0.4)]">
             <Icon className={cn('size-3.5 shrink-0', t.tone === 'success' ? 'text-ok' : t.tone === 'error' ? 'text-bad' : 'text-info')} aria-hidden="true" />
             {t.message}
+            {t.action && (
+              <button
+                type="button"
+                onClick={() => {
+                  dismissToast(t.id);
+                  t.action!.run();
+                }}
+                className="ml-1 bevel-out bg-raised px-1.5 text-xs font-bold hover:bg-raised-hover active:bevel-in"
+              >
+                {t.action.label}
+              </button>
+            )}
           </div>
         );
       })}
@@ -236,6 +249,7 @@ export function App() {
 
   useEffect(() => {
     if (status !== 'ready') return;
+    void loadBatches();
     return startRouter(useHQ.getState().settings.startupPage);
   }, [status]);
 

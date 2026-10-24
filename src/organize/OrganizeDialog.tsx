@@ -9,6 +9,8 @@ import { uniqueStrings } from '../lib/util';
 import { Button, Check } from '../ui/controls';
 import { Dialog } from '../ui/Dialog';
 import { localRulesProvider } from './provider';
+import { recordBatch } from '../data/batches';
+import { undoWithToast } from '../app/undo';
 import type { Suggestion } from './review';
 
 const GROUPS: { type: Suggestion['type']; title: string; note: string }[] = [
@@ -97,8 +99,10 @@ export function OrganizeDialog() {
 
   const run = () => {
     const chosen = applicable.filter((s) => picked.has(s.key));
-    for (const s of chosen) apply(s, useHQ.getState);
-    toast(`Applied ${chosen.length} suggestion${chosen.length === 1 ? '' : 's'}`);
+    const batch = recordBatch('Organization review', 'local', () => {
+      for (const s of chosen) apply(s, useHQ.getState);
+    });
+    toast(`Applied ${chosen.length} suggestion${chosen.length === 1 ? '' : 's'}`, 'success', batch ? { label: 'Undo', run: () => undoWithToast(batch.id) } : undefined);
     closeOrganize();
   };
 

@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { App } from '../App';
 import { navigate, useRoute } from '../app/router';
-import { openEditor, useUI } from '../app/ui';
+import { openEditor, openOrganize, useUI } from '../app/ui';
 import { buildExport } from '../data/backup';
 import { createMemoryAdapter } from '../data/adapters/memory';
 import { emptyWorkspace } from '../data/defaults';
@@ -376,6 +376,22 @@ describe('Ideas connected', () => {
     });
     const panel = screen.getByRole('region', { name: 'Deadlines & events' });
     expect(within(panel).getByRole('button', { name: /Call the dentist/ })).toBeInTheDocument();
+  });
+});
+
+describe('Undo for applied suggestions', () => {
+  it('the local Organize review can be undone from its toast', async () => {
+    const { user } = await renderApp();
+    act(() => {
+      createIdea({ body: 'Finish the chemistry lab report by Friday' });
+      openOrganize();
+    });
+    await user.click(await within(openDialog()).findByRole('button', { name: /Select all/ }));
+    await user.click(within(openDialog()).getByRole('button', { name: /Apply selected/ }));
+    expect(useHQ.getState().tasks.length).toBeGreaterThan(0);
+    await user.click(await screen.findByRole('button', { name: 'Undo' }));
+    expect(useHQ.getState().tasks).toEqual([]);
+    expect(useHQ.getState().ideas[0]).toMatchObject({ converted: [], tags: [] });
   });
 });
 

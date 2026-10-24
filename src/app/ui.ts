@@ -23,6 +23,8 @@ export interface Toast {
   id: string;
   message: string;
   tone: 'success' | 'error' | 'info';
+  /** One button on the toast, e.g. Undo. */
+  action?: { label: string; run: () => void };
 }
 
 export interface ConfirmRequest {
@@ -88,10 +90,14 @@ export const setExplorerRequest = (explorerRequest: UIState['explorerRequest']) 
 export const confirmAction = (req: ConfirmRequest) => useUI.setState({ confirm: req });
 export const closeConfirm = () => useUI.setState({ confirm: null });
 
-export function toast(message: string, tone: Toast['tone'] = 'success') {
+export function toast(message: string, tone: Toast['tone'] = 'success', action?: Toast['action']) {
   const id = newId();
-  useUI.setState((s) => ({ toasts: [...s.toasts.slice(-2), { id, message, tone }] }));
-  setTimeout(() => useUI.setState((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), tone === 'error' ? 6000 : 2800);
+  useUI.setState((s) => ({ toasts: [...s.toasts.slice(-2), { id, message, tone, action }] }));
+  setTimeout(() => dismissToast(id), action ? 8000 : tone === 'error' ? 6000 : 2800);
+}
+
+export function dismissToast(id: string) {
+  useUI.setState((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
 }
 
 export function touchRecent(kind: RecentKind, id: string) {

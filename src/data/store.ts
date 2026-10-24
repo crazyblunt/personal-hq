@@ -162,7 +162,22 @@ function setList<K extends CollectionName>(name: K, items: Item<K>[]) {
   markDirty(name);
 }
 
+/*
+ * While an undoable batch runs (`src/data/batches.ts`), every record about
+ * to change is reported once with its previous version, and every new
+ * record by id. The activity log is never part of a batch.
+ */
+export interface BatchRecorder {
+  touched(collection: CollectionName, before: { id: string; updatedAt: string }): void;
+  created(collection: CollectionName, id: string): void;
+}
+let recorder: BatchRecorder | null = null;
+export function setBatchRecorder(r: BatchRecorder | null) {
+  recorder = r;
+}
+
 function insert<K extends CollectionName>(name: K, item: Item<K>) {
+  if (recorder && name !== 'activity') recorder.created(name, item.id);
   setList(name, [...list(name), item]);
 }
 
@@ -170,6 +185,7 @@ function patch<K extends CollectionName>(name: K, id: string, change: Partial<It
   const cur = list(name).find((r) => r.id === id);
   if (!cur) return undefined;
   const changes = typeof change === 'function' ? change(cur) : change;
+  if (recorder && name !== 'activity') recorder.touched(name, cur as { id: string; updatedAt: string });
   const next = { ...cur, ...changes, id, updatedAt: nowIso() } as Item<K>;
   setList(
     name,
@@ -219,6 +235,7 @@ function emitDeletes(removed: RemovedRecord[]) {
 
 function removeWhere<K extends CollectionName>(name: K, pred: (r: Item<K>) => boolean): Item<K>[] {
   const removed = list(name).filter(pred);
+  if (recorder && name !== 'activity') for (const r of removed) recorder.touched(name, r as { id: string; updatedAt: string });
   if (removed.length) {
     setList(name, list(name).filter((r) => !pred(r)));
     emitDeletes(removed.map((r) => ({ collection: name, id: r.id })));
