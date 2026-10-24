@@ -35,6 +35,14 @@ export function uniqueStrings(items: string[]): string[] {
 }
 
 /** `#hashtags` written inside free text. */
+const TAG_RE = /^[\p{L}\p{N}][\p{L}\p{N}_-]{0,39}$/u;
+
+/** Normalizes a tag the way `#hashtags` are written: no leading #, spaces become dashes. Null when it can't be a tag. */
+export function cleanTag(raw: string): string | null {
+  const t = raw.trim().replace(/^#+/, '').trim().replace(/\s+/g, '-');
+  return TAG_RE.test(t) ? t : null;
+}
+
 export function extractHashtags(text: string): string[] {
   const out: string[] = [];
   for (const m of text.matchAll(/(?:^|\s)#([\p{L}\p{N}][\p{L}\p{N}_-]{0,39})/gu)) out.push(m[1]);
