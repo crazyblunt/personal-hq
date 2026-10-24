@@ -7,11 +7,11 @@ import { ideaTitle } from '../data/store';
 import type { DateKey, Idea, Note } from '../data/types';
 import { actionableReason, findSimilarPairs, suggestCategory, suggestTags } from './rules';
 
-export type ItemRef = { kind: 'idea' | 'note'; id: string };
+export type ReviewTarget = { kind: 'idea' | 'note'; id: string };
 
 export type Suggestion =
-  | { key: string; type: 'tags'; target: ItemRef; title: string; tags: string[]; reason: string }
-  | { key: string; type: 'category'; target: ItemRef; title: string; category: string; reason: string }
+  | { key: string; type: 'tags'; target: ReviewTarget; title: string; tags: string[]; reason: string }
+  | { key: string; type: 'category'; target: ReviewTarget; title: string; category: string; reason: string }
   | { key: string; type: 'to-task'; ideaId: string; title: string; reason: string }
   | { key: string; type: 'link-ideas'; a: string; b: string; titleA: string; titleB: string; reason: string }
   | { key: string; type: 'similar-notes'; a: string; b: string; titleA: string; titleB: string; reason: string }

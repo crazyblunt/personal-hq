@@ -77,6 +77,7 @@ export function defaultSettings(): Settings {
     countdowns: [],
     focusMinutes: 25,
     breakMinutes: 5,
+    views: [],
   };
 }
 

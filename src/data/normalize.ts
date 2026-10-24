@@ -13,8 +13,10 @@ import {
   BUG_STATUSES,
   DENSITIES,
   ENTITY_KINDS,
+  EXPLORER_SORT_KEYS,
   IDEA_KINDS,
   LINK_KINDS,
+  LINKABLE_KINDS,
   PRIORITIES,
   PROJECT_CATEGORIES,
   PROJECT_COLORS,
@@ -30,12 +32,17 @@ import {
   type CollectionName,
   type Collections,
   type Countdown,
+  type ExplorerFilters,
+  type ExplorerSort,
   type Idea,
+  type ItemRef,
+  type LinkableKind,
   type Milestone,
   type Note,
   type Project,
   type ProjectLink,
   type Prompt,
+  type SavedView,
   type Settings,
   type Shortcut,
   type SourceRef,
@@ -130,6 +137,20 @@ function sourceRef(o: Obj, key: string): SourceRef | null {
   return { kind: v.kind, id: v.id };
 }
 
+/** Links to other items: kept when the kind is known and the id is text; duplicates dropped. */
+function itemRefs(o: Obj, key = 'itemLinks'): ItemRef[] {
+  const v = o[key];
+  if (!Array.isArray(v)) return [];
+  const seen = new Set<string>();
+  return v.filter(isObj).flatMap((r) => {
+    if (typeof r.id !== 'string' || !r.id || typeof r.kind !== 'string' || !(LINKABLE_KINDS as readonly string[]).includes(r.kind)) return [];
+    const k = `${r.kind}:${r.id}`;
+    if (seen.has(k)) return [];
+    seen.add(k);
+    return [{ kind: r.kind as LinkableKind, id: r.id }];
+  });
+}
+
 function subtasks(o: Obj): Subtask[] {
   const v = o.subtasks;
   if (!Array.isArray(v)) return [];
@@ -191,6 +212,7 @@ export const normalizers: { [K in CollectionName]: Normalizer<K> } = {
       order: num(o, 'order', 0),
       completedAt: status === 'completed' ? (isoOrNull(o, 'completedAt') ?? b.updatedAt) : null,
       source: sourceRef(o, 'source'),
+      itemLinks: itemRefs(o),
     };
   },
   ideas: (raw, path, warn): Idea => {
@@ -216,6 +238,7 @@ export const normalizers: { [K in CollectionName]: Normalizer<K> } = {
           )
         : [],
       remindOn: dateKey(o, 'remindOn'),
+      itemLinks: itemRefs(o),
     };
   },
   notes: (raw, path): Note => {
@@ -230,6 +253,7 @@ export const normalizers: { [K in CollectionName]: Normalizer<K> } = {
       projectId: strOrNull(o, 'projectId'),
       taskIds: strList(o, 'taskIds'),
       source: sourceRef(o, 'source'),
+      itemLinks: itemRefs(o),
     };
   },
   projects: (raw, path, warn): Project => {
@@ -250,6 +274,8 @@ export const normalizers: { [K in CollectionName]: Normalizer<K> } = {
       milestones: milestones(o),
       archivedFromStatus:
         status === 'archived' ? (from === 'active' || from === 'paused' || from === 'completed' ? from : 'active') : null,
+      tags: strList(o, 'tags'),
+      itemLinks: itemRefs(o),
     };
   },
   events: (raw, path): CalendarEvent => {
@@ -396,6 +422,27 @@ function countdowns(v: unknown): Countdown[] {
   );
 }
 
+const DEFAULT_VIEW_FILTERS: ExplorerFilters = { kinds: [], query: '', tag: '', projectId: '', state: 'open' };
+
+function views(v: unknown): SavedView[] {
+  if (!Array.isArray(v)) return [];
+  return v.filter(isObj).flatMap((x) => {
+    if (typeof x.id !== 'string' || !x.id || typeof x.name !== 'string' || !x.name.trim()) return [];
+    const f = isObj(x.filters) ? x.filters : {};
+    const so = isObj(x.sort) ? x.sort : {};
+    const noop = () => {};
+    const filters: ExplorerFilters = {
+      kinds: strList(f, 'kinds').filter((k): k is LinkableKind => (LINKABLE_KINDS as readonly string[]).includes(k)),
+      query: str(f, 'query'),
+      tag: str(f, 'tag'),
+      projectId: str(f, 'projectId'),
+      state: oneOf(f, 'state', ['open', 'done', 'archived', 'all'] as const, DEFAULT_VIEW_FILTERS.state, 'view', noop),
+    };
+    const sort: ExplorerSort = { key: oneOf(so, 'key', EXPLORER_SORT_KEYS, 'updated', 'view', noop), dir: so.dir === 'asc' ? 'asc' : 'desc' };
+    return [{ id: x.id, name: x.name.trim(), filters, sort }];
+  });
+}
+
 /** Settings never fail to load: anything missing or unknown falls back to its default. */
 export function normalizeSettings(v: unknown): Settings {
   const d = defaultSettings();
@@ -416,6 +463,7 @@ export function normalizeSettings(v: unknown): Settings {
     countdowns: countdowns(v.countdowns),
     focusMinutes: Math.min(180, Math.max(1, Math.round(num(v, 'focusMinutes', d.focusMinutes)))),
     breakMinutes: Math.min(60, Math.max(1, Math.round(num(v, 'breakMinutes', d.breakMinutes)))),
+    views: views(v.views),
     ...(typeof v.updatedAt === 'string' ? { updatedAt: v.updatedAt } : {}),
   };
 }

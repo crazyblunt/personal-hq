@@ -15,6 +15,17 @@ export interface BaseRecord {
   updatedAt: string;
 }
 
+/* ---------- Links between items ---------- */
+
+export const LINKABLE_KINDS = ['task', 'note', 'idea', 'project'] as const;
+export type LinkableKind = (typeof LINKABLE_KINDS)[number];
+
+/** A reference to a task, note, idea, or project, used for links between items. */
+export interface ItemRef {
+  kind: LinkableKind;
+  id: string;
+}
+
 /* ---------- Tasks ---------- */
 
 export const TASK_STATUSES = ['inbox', 'planned', 'in_progress', 'waiting', 'completed'] as const;
@@ -61,6 +72,8 @@ export interface Task extends BaseRecord {
   order: number;
   completedAt: string | null;
   source: SourceRef | null;
+  /** Links this task added to other items (see `src/data/linking.ts`). */
+  itemLinks: ItemRef[];
 }
 
 /* ---------- Ideas / Brain dump ---------- */
@@ -96,6 +109,7 @@ export interface Idea extends BaseRecord {
   relatedIds: string[];
   converted: ConvertedRef[];
   remindOn: DateKey | null;
+  itemLinks: ItemRef[];
 }
 
 /* ---------- Notes ---------- */
@@ -111,6 +125,7 @@ export interface Note extends BaseRecord {
   projectId: string | null;
   taskIds: string[];
   source: SourceRef | null;
+  itemLinks: ItemRef[];
 }
 
 /* ---------- Projects ---------- */
@@ -175,6 +190,8 @@ export interface Project extends BaseRecord {
   milestones: Milestone[];
   /** Status to return to when an archived project is restored. */
   archivedFromStatus: Exclude<ProjectStatus, 'archived'> | null;
+  tags: string[];
+  itemLinks: ItemRef[];
 }
 
 /* ---------- Bugs (from Agent Command Center) ---------- */
@@ -333,6 +350,31 @@ export interface Countdown {
   target: string;
 }
 
+/* ---------- Explorer views ---------- */
+
+export interface ExplorerFilters {
+  /** Empty means every kind. */
+  kinds: LinkableKind[];
+  query: string;
+  tag: string;
+  projectId: string;
+  state: 'open' | 'done' | 'archived' | 'all';
+}
+
+export const EXPLORER_SORT_KEYS = ['type', 'title', 'status', 'project', 'date', 'updated', 'links'] as const;
+
+export interface ExplorerSort {
+  key: (typeof EXPLORER_SORT_KEYS)[number];
+  dir: 'asc' | 'desc';
+}
+
+export interface SavedView {
+  id: string;
+  name: string;
+  filters: ExplorerFilters;
+  sort: ExplorerSort;
+}
+
 export interface Settings {
   theme: ThemeName;
   accent: AccentName;
@@ -347,6 +389,8 @@ export interface Settings {
   countdowns: Countdown[];
   focusMinutes: number;
   breakMinutes: number;
+  /** Saved Explorer views (filters and sort). */
+  views: SavedView[];
   /** When settings last changed, so sync can keep the newest copy. */
   updatedAt?: string;
 }

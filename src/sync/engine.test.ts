@@ -25,6 +25,7 @@ const task = (id: string, title: string, updatedAt: string): Task => ({
   order: 0,
   completedAt: null,
   source: null,
+  itemLinks: [],
 });
 
 /** A simulated device: its own workspace and sync state, sharing one server. */
@@ -97,7 +98,7 @@ describe('syncOnce', () => {
     const { mac, phone } = await pair();
     mac.ws.tasks = [task('t1', 'From Mac', '2026-10-20T10:00:00.000Z')];
     mac.ws.settings = { ...mac.ws.settings, theme: 'amber', updatedAt: '2026-10-20T09:00:00.000Z' };
-    phone.ws.ideas = [{ id: 'i1', title: '', body: 'From phone', kind: 'idea', url: '', tags: [], category: '', favorite: false, inbox: true, archived: false, projectId: null, relatedIds: [], converted: [], remindOn: null, createdAt: '2026-10-21T08:00:00.000Z', updatedAt: '2026-10-21T08:00:00.000Z' }];
+    phone.ws.ideas = [{ id: 'i1', title: '', body: 'From phone', kind: 'idea', url: '', tags: [], category: '', favorite: false, inbox: true, archived: false, projectId: null, relatedIds: [], converted: [], remindOn: null, itemLinks: [], createdAt: '2026-10-21T08:00:00.000Z', updatedAt: '2026-10-21T08:00:00.000Z' }];
 
     expect(await mac.sync()).toMatchObject({ pushed: 2 }); // task + settings
     expect(await phone.sync()).toMatchObject({ pulled: 2 });

@@ -23,6 +23,7 @@ function task(p: Partial<Task> & { id: string }): Task {
     order: 0,
     completedAt: null,
     source: null,
+    itemLinks: [],
     ...p,
   };
 }
@@ -87,6 +88,8 @@ describe('calendarItems', () => {
     links: [],
     milestones: [{ id: 'm', title: 'Draft', dueDate: '2026-10-15', done: false }],
     archivedFromStatus: null,
+    tags: [],
+    itemLinks: [],
   };
 
   it('spreads multi-day events, adds task deadlines, targets, and milestones', () => {

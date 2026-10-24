@@ -61,7 +61,7 @@ describe('IndexedDB adapter', () => {
     await a.load();
     const ws = emptyWorkspace();
     for (let d = 1; d <= 9; d++) {
-      await a.saveDailySnapshot!(`2026-10-0${d}`, { ...ws, notes: [{ id: `n${d}`, title: `Day ${d}`, body: '', tags: [], category: '', favorite: false, projectId: null, taskIds: [], source: null, createdAt: '', updatedAt: '' }] });
+      await a.saveDailySnapshot!(`2026-10-0${d}`, { ...ws, notes: [{ id: `n${d}`, title: `Day ${d}`, body: '', tags: [], category: '', favorite: false, projectId: null, taskIds: [], source: null, itemLinks: [], createdAt: '', updatedAt: '' }] });
     }
     const list = await a.listDailySnapshots!();
     expect(list.map((s) => s.day)).toEqual(['2026-10-09', '2026-10-08', '2026-10-07', '2026-10-06', '2026-10-05', '2026-10-04', '2026-10-03']);

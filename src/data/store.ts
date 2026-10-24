@@ -5,8 +5,9 @@
  */
 import { create } from 'zustand';
 import { todayKey } from '../lib/dates';
-import { errorMessage, extractHashtags, findUrl, firstLine, newId, nowIso, uniqueStrings } from '../lib/util';
+import { errorMessage, extractHashtags, findUrl, newId, nowIso, uniqueStrings } from '../lib/util';
 import { createMemoryAdapter } from './adapters/memory';
+import { ideaTitle } from './titles';
 import type { MigrationSummary, StorageAdapter } from './adapters/types';
 import { ACTIVITY_LIMIT, emptyWorkspace } from './defaults';
 import {
@@ -177,6 +178,26 @@ function patch<K extends CollectionName>(name: K, id: string, change: Partial<It
   return next;
 }
 
+/*
+ * Low-level record operations for other modules in src/data (linking, tags,
+ * undo batches). They save like any edit but log no activity; the calling
+ * action logs it. UI code must use the named actions instead.
+ */
+export function patchRecord<K extends CollectionName>(name: K, id: string, change: Partial<Item<K>>): Item<K> | undefined {
+  return patch(name, id, change);
+}
+
+export function removeRecords<K extends CollectionName>(name: K, pred: (r: Item<K>) => boolean): Item<K>[] {
+  return removeWhere(name, pred);
+}
+
+/** Puts back an earlier version of a record (or re-inserts it), with a fresh `updatedAt` so sync carries it. */
+export function restoreRecord<K extends CollectionName>(name: K, record: Item<K>): void {
+  const next = { ...record, updatedAt: nowIso() } as Item<K>;
+  const exists = list(name).some((r) => r.id === record.id);
+  setList(name, exists ? list(name).map((r) => (r.id === record.id ? next : r)) : [...list(name), next]);
+}
+
 /* ---------- Change hooks (used by sync) ---------- */
 
 export interface RemovedRecord {
@@ -295,6 +316,7 @@ export function createTask(input: TaskInput): Task {
     subtasks: [],
     assignee: '',
     source: null,
+    itemLinks: [],
     ...input,
     title: input.title.trim(),
     status,
@@ -385,6 +407,8 @@ export function detectIdeaKind(text: string): IdeaKind {
   return 'idea';
 }
 
+export { ideaTitle };
+
 export type IdeaInput = Partial<Omit<Idea, 'id' | 'createdAt' | 'updatedAt'>> & { body: string };
 
 export function createIdea(input: IdeaInput): Idea {
@@ -402,6 +426,7 @@ export function createIdea(input: IdeaInput): Idea {
     relatedIds: [],
     converted: [],
     remindOn: null,
+    itemLinks: [],
     ...input,
     body,
     tags: uniqueStrings([...(input.tags ?? []), ...extractHashtags(body)]),
@@ -411,7 +436,6 @@ export function createIdea(input: IdeaInput): Idea {
   return idea;
 }
 
-export const ideaTitle = (i: Pick<Idea, 'title' | 'body'>) => i.title.trim() || firstLine(i.body, 70) || 'Untitled idea';
 
 export function updateIdea(id: string, changes: Partial<Idea>) {
   const next = patch('ideas', id, changes);
@@ -471,7 +495,7 @@ export function convertIdea(id: string, to: ConvertTarget): Task | Note | Projec
 export type NoteInput = Partial<Omit<Note, 'id' | 'createdAt' | 'updatedAt'>>;
 
 export function createNote(input: NoteInput = {}): Note {
-  const note: Note = { ...stamp(), title: 'Untitled note', body: '', tags: [], category: '', favorite: false, projectId: null, taskIds: [], source: null, ...input };
+  const note: Note = { ...stamp(), title: 'Untitled note', body: '', tags: [], category: '', favorite: false, projectId: null, taskIds: [], source: null, itemLinks: [], ...input };
   insert('notes', note);
   logActivity({ action: 'created', entity: 'note', entityId: note.id, title: note.title, projectId: note.projectId });
   return note;
@@ -514,6 +538,8 @@ export function createProject(input: ProjectInput): Project {
     links: [],
     milestones: [],
     archivedFromStatus: null,
+    tags: [],
+    itemLinks: [],
     ...input,
     name: input.name.trim(),
   };

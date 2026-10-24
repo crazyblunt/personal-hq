@@ -23,6 +23,7 @@ const task = (id: string, title: string, updatedAt: string): Task => ({
   order: 0,
   completedAt: null,
   source: null,
+  itemLinks: [],
 });
 
 function workspaceWith(tasks: Task[]): WorkspaceData {

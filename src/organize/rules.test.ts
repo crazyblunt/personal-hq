@@ -60,6 +60,7 @@ describe('buildReview', () => {
     relatedIds: [],
     converted: [],
     remindOn: null,
+    itemLinks: [],
     ...extra,
   });
 

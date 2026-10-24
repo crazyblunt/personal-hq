@@ -117,6 +117,7 @@ describe('Personal HQ app', () => {
         relatedIds: [],
         converted: [],
         remindOn: null,
+        itemLinks: [],
       },
     ];
     const blob = new File([JSON.stringify(buildExport(file))], 'backup.json', { type: 'application/json' });
