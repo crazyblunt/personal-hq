@@ -1,8 +1,8 @@
-import { LayoutGrid, Plus, RotateCcw, Sun } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowUpToLine, LayoutGrid, Plus, RotateCcw, Sun } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useToday } from '../../app/clock';
-import { confirmAction } from '../../app/ui';
+import { useMediaQuery, WIDE_QUERY } from '../../app/media';
+import { confirmAction, setMyDayCustomize, useUI } from '../../app/ui';
 import { DEFAULT_WIDGETS } from '../../data/defaults';
 import { calendarItems, isMyDayTask, isOverdue } from '../../data/selectors';
 import { updateSettings, useHQ } from '../../data/store';
@@ -11,7 +11,7 @@ import { formatDate } from '../../lib/dates';
 import { plural } from '../../lib/util';
 import { PageHeader } from '../../ui/bits';
 import { Button } from '../../ui/controls';
-import { WidgetGrid } from './WidgetGrid';
+import { showWidget, tidyWidgets, WidgetGrid } from './WidgetGrid';
 import { WIDGETS } from './widgets';
 
 export function MyDayPage() {
@@ -25,7 +25,8 @@ export function MyDayPage() {
       inbox: s.ideas.filter((i) => i.inbox && !i.archived).length + s.tasks.filter((t) => t.status === 'inbox').length,
     })),
   );
-  const [customizing, setCustomizing] = useState(false);
+  const customizing = useUI((s) => s.myDayCustomize);
+  const wide = useMediaQuery(WIDE_QUERY);
   const enabled = widgets.filter((w) => w.enabled);
   const hidden = widgets.filter((w) => !w.enabled);
 
@@ -57,7 +58,7 @@ export function MyDayPage() {
                 <RotateCcw className="size-3.5" aria-hidden="true" /> Reset layout
               </Button>
             )}
-            <Button variant={customizing ? 'primary' : 'secondary'} onClick={() => setCustomizing((v) => !v)} aria-pressed={customizing}>
+            <Button variant={customizing ? 'primary' : 'secondary'} onClick={() => setMyDayCustomize(!customizing)} aria-pressed={customizing}>
               <LayoutGrid className="size-3.5" aria-hidden="true" /> {customizing ? 'Done customizing' : 'Customize'}
             </Button>
           </>
@@ -66,10 +67,17 @@ export function MyDayPage() {
 
       {customizing && (
         <div className="mb-2 flex flex-wrap items-center gap-1.5 border border-dashed border-line-strong bg-inset px-2 py-1.5 text-sm">
-          <span className="text-muted">Drag widgets by their title bar, or use the arrows. S/M/L sets the width.</span>
+          <span className="text-muted">
+            {wide ? 'Drag a title bar to move a widget and its corner to resize it. Keyboard: focus the grip, then arrows move and Shift+arrows resize.' : 'Arrange widgets on a wider screen (1024px or more). Here you can show or hide them.'}
+          </span>
+          {wide && (
+            <Button size="sm" onClick={() => save(tidyWidgets(widgets))} title="Move widgets up to close gaps">
+              <ArrowUpToLine className="size-3" aria-hidden="true" /> Tidy up
+            </Button>
+          )}
           {hidden.length > 0 && <span className="ml-2 font-mono text-2xs tracking-wider text-subtle uppercase">Hidden:</span>}
           {hidden.map((w) => (
-            <Button key={w.id} size="sm" onClick={() => save([...widgets.filter((x) => x.id !== w.id), { ...w, enabled: true }])} title={WIDGETS[w.id].description}>
+            <Button key={w.id} size="sm" onClick={() => save(showWidget(widgets, w.id))} title={WIDGETS[w.id].description}>
               <Plus className="size-3" aria-hidden="true" /> {WIDGETS[w.id].title}
             </Button>
           ))}
@@ -79,7 +87,7 @@ export function MyDayPage() {
       {enabled.length === 0 ? (
         <div className="border border-line bg-panel p-6 text-center text-sm text-muted">
           All widgets are hidden.{' '}
-          <button type="button" className="text-accent hover:underline" onClick={() => setCustomizing(true)}>
+          <button type="button" className="text-accent hover:underline" onClick={() => setMyDayCustomize(true)}>
             Customize
           </button>{' '}
           to add some back.

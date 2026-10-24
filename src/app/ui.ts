@@ -46,6 +46,8 @@ interface UIState {
   sidebarOpen: boolean;
   /** A task view requested from outside the Tasks page (e.g. the command bar). */
   taskViewRequest: 'myday' | 'upcoming' | 'overdue' | 'all' | 'completed' | null;
+  /** My Day is in customize (arrange) mode. */
+  myDayCustomize: boolean;
 }
 
 const RECENT_LIMIT = 20;
@@ -60,6 +62,7 @@ export const useUI = create<UIState>(() => ({
   recent: readDevice<RecentItem[]>('recent', []).filter((r) => r && typeof r.id === 'string'),
   sidebarOpen: false,
   taskViewRequest: null,
+  myDayCustomize: false,
 }));
 
 export const openEditor = (editor: EditorState) => useUI.setState({ editor, commandOpen: false });
@@ -71,6 +74,7 @@ export const closeCapture = () => useUI.setState({ capture: null });
 export const openOrganize = () => useUI.setState({ organizeOpen: true, commandOpen: false });
 export const closeOrganize = () => useUI.setState({ organizeOpen: false });
 export const setSidebarOpen = (sidebarOpen: boolean) => useUI.setState({ sidebarOpen });
+export const setMyDayCustomize = (myDayCustomize: boolean) => useUI.setState({ myDayCustomize });
 
 /** Asks before something destructive. The action only runs if the user confirms in the dialog. */
 export const confirmAction = (req: ConfirmRequest) => useUI.setState({ confirm: req });

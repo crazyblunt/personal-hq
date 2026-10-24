@@ -1,13 +1,16 @@
-import { ArrowDown, ArrowUp, Bot, Keyboard, LayoutGrid, Palette, Settings, SlidersHorizontal } from 'lucide-react';
+import { Bot, Keyboard, LayoutGrid, Palette, Settings, SlidersHorizontal } from 'lucide-react';
 import { MOD_KEY } from '../../app/platform';
-import { SECTION_LABEL } from '../../app/router';
+import { navigate, SECTION_LABEL } from '../../app/router';
+import { confirmAction, setMyDayCustomize } from '../../app/ui';
+import { DEFAULT_WIDGETS } from '../../data/defaults';
 import { updateSettings, useHQ } from '../../data/store';
-import { ACCENTS, PRIORITIES, PRIORITY_LABEL, SECTIONS, THEMES, THEME_LABEL, WIDGET_SIZES, type AccentName, type Density, type ThemeName } from '../../data/types';
+import { ACCENTS, PRIORITIES, PRIORITY_LABEL, SECTIONS, THEMES, THEME_LABEL, type AccentName, type Density, type ThemeName } from '../../data/types';
 import { providers } from '../../organize/provider';
 import { cn } from '../../lib/util';
 import { Kbd, PageHeader, Panel, Segmented } from '../../ui/bits';
 import { Button, Check, Field, Select } from '../../ui/controls';
 import { WIDGETS } from '../myday/widgets';
+import { showWidget } from '../myday/WidgetGrid';
 import { NAV_ITEMS } from '../../shell/nav';
 import { DataSection } from './DataSection';
 import { SyncPanel } from './SyncPanel';
@@ -35,13 +38,6 @@ const SHORTCUTS: [string[], string][] = [
 
 export function SettingsPage() {
   const s = useHQ((st) => st.settings);
-  const move = (i: number, dir: -1 | 1) => {
-    const next = [...s.widgets];
-    const j = i + dir;
-    if (j < 0 || j >= next.length) return;
-    [next[i], next[j]] = [next[j], next[i]];
-    updateSettings({ widgets: next });
-  };
 
   return (
     <>
@@ -133,28 +129,46 @@ export function SettingsPage() {
             </div>
           </Panel>
 
-          <Panel title="My Day widgets" icon={<LayoutGrid />}>
+          <Panel
+            title="My Day widgets"
+            icon={<LayoutGrid />}
+            tools={
+              <>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setMyDayCustomize(true);
+                    navigate('myday');
+                  }}
+                >
+                  Arrange on My Day
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    confirmAction({
+                      title: 'Reset the dashboard layout?',
+                      body: 'Widget positions, sizes, and visibility go back to the defaults. Your data is not affected.',
+                      confirmLabel: 'Reset layout',
+                      danger: false,
+                      onConfirm: () => updateSettings({ widgets: DEFAULT_WIDGETS.map((w) => ({ ...w })) }),
+                    })
+                  }
+                >
+                  Reset layout
+                </Button>
+              </>
+            }
+          >
             <ul className="p-1">
-              {s.widgets.map((w, i) => (
+              {s.widgets.map((w) => (
                 <li key={w.id} className="flex items-center gap-2 border-b border-line px-1 py-1 last:border-b-0">
-                  <Check checked={w.enabled} onChange={(v) => updateSettings({ widgets: s.widgets.map((x) => (x.id === w.id ? { ...x, enabled: v } : x)) })} label={`Show ${WIDGETS[w.id].title}`} />
+                  <Check checked={w.enabled} onChange={(v) => updateSettings({ widgets: v ? showWidget(s.widgets, w.id) : s.widgets.map((x) => (x.id === w.id ? { ...x, enabled: false } : x)) })} label={`Show ${WIDGETS[w.id].title}`} />
                   <span className="min-w-0 flex-1">
                     <span className={cn('block truncate text-sm', !w.enabled && 'text-subtle')}>{WIDGETS[w.id].title}</span>
                     <span className="block truncate text-xs text-subtle">{WIDGETS[w.id].description}</span>
                   </span>
-                  <Select value={w.size} onChange={(e) => updateSettings({ widgets: s.widgets.map((x) => (x.id === w.id ? { ...x, size: e.target.value as typeof w.size } : x)) })} aria-label={`${WIDGETS[w.id].title} width`} className="h-6 w-24 text-xs">
-                    {WIDGET_SIZES.map((sz) => (
-                      <option key={sz} value={sz}>
-                        {sz === 'sm' ? 'Small' : sz === 'md' ? 'Medium' : 'Large'}
-                      </option>
-                    ))}
-                  </Select>
-                  <Button size="iconSm" variant="ghost" aria-label={`Move ${WIDGETS[w.id].title} up`} disabled={i === 0} onClick={() => move(i, -1)}>
-                    <ArrowUp className="size-3" />
-                  </Button>
-                  <Button size="iconSm" variant="ghost" aria-label={`Move ${WIDGETS[w.id].title} down`} disabled={i === s.widgets.length - 1} onClick={() => move(i, 1)}>
-                    <ArrowDown className="size-3" />
-                  </Button>
                 </li>
               ))}
             </ul>

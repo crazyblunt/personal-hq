@@ -6,13 +6,14 @@ import { useUI } from '../app/ui';
 import { buildExport } from '../data/backup';
 import { createMemoryAdapter } from '../data/adapters/memory';
 import { emptyWorkspace } from '../data/defaults';
-import { createNote, createTask, initStore, useHQ } from '../data/store';
+import { DEFAULT_WIDGETS } from '../data/defaults';
+import { createNote, createTask, initStore, updateSettings, useHQ } from '../data/store';
 import { clearMatchMedia, mockMatchMedia } from './helpers';
 
 async function renderApp() {
   location.hash = '';
   await initStore(createMemoryAdapter());
-  useUI.setState({ editor: null, commandOpen: false, capture: null, organizeOpen: false, confirm: null, toasts: [] });
+  useUI.setState({ editor: null, commandOpen: false, capture: null, organizeOpen: false, confirm: null, toasts: [], myDayCustomize: false });
   const user = userEvent.setup();
   const utils = render(<App />);
   await screen.findByRole('heading', { name: 'My Day', level: 1 });
@@ -165,5 +166,39 @@ describe('My Day grid', () => {
     await renderApp();
     expect(regionTitles().slice(0, 3)).toEqual(['Today', 'Quick actions', 'Deadlines & events']);
     expect(screen.getByRole('region', { name: 'Today' }).parentElement!.style.gridColumn).toBe('');
+  });
+
+  it('moves and resizes a widget with the keyboard in customize mode', async () => {
+    mockMatchMedia(true);
+    const { user } = await renderApp();
+    await user.click(screen.getByRole('button', { name: 'Customize' }));
+    const handle = screen.getByRole('button', { name: 'Move or resize Today' });
+    handle.focus();
+    await user.keyboard('{ArrowDown}{Shift>}{ArrowLeft}{/Shift}');
+    const today = useHQ.getState().settings.widgets.find((w) => w.id === 'today')!;
+    expect(today).toMatchObject({ x: 0, y: 1, w: 7, size: 'md' });
+    expect(screen.getByText('Today resized to 7 by 12')).toBeInTheDocument();
+  });
+
+  it('tidy up closes gaps and reset restores the defaults', async () => {
+    mockMatchMedia(true);
+    const { user } = await renderApp();
+    act(() => updateSettings({ widgets: useHQ.getState().settings.widgets.map((w) => (w.id === 'today' ? { ...w, y: 5 } : w)) }));
+    await user.click(screen.getByRole('button', { name: 'Customize' }));
+    await user.click(screen.getByRole('button', { name: 'Tidy up' }));
+    expect(useHQ.getState().settings.widgets.find((w) => w.id === 'today')!.y).toBe(0);
+    await user.click(screen.getByRole('button', { name: /Reset layout/ }));
+    await user.click(within(openDialog()).getByRole('button', { name: 'Reset layout' }));
+    expect(useHQ.getState().settings.widgets).toEqual(DEFAULT_WIDGETS);
+  });
+
+  it('shows a hidden widget in the first free spot', async () => {
+    mockMatchMedia(true);
+    const { user } = await renderApp();
+    await user.click(screen.getByRole('button', { name: 'Customize' }));
+    await user.click(screen.getByRole('button', { name: /Clock/ }));
+    const clock = useHQ.getState().settings.widgets.find((w) => w.id === 'clock')!;
+    expect(clock).toMatchObject({ enabled: true, w: 3, h: 5 });
+    expect(screen.getByRole('region', { name: 'Clock' })).toBeInTheDocument();
   });
 });
