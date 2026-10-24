@@ -27,3 +27,16 @@ export const localRulesProvider: OrganizerProvider = {
 };
 
 export const providers: OrganizerProvider[] = [localRulesProvider];
+
+/** Every source of suggestions, for Settings › Claude. Only the first runs without sending anything. */
+export const SUGGESTION_SOURCES: { id: 'local-rules' | 'claude-manual' | 'claude-live'; label: string; kind: 'local' | 'manual' | 'remote'; description: string }[] = [
+  { id: 'local-rules', label: 'Local rules', kind: 'local', description: 'Keyword rules, word overlap, and fixed templates. Runs in this browser; nothing is sent anywhere.' },
+  { id: 'claude-manual', label: 'Claude (copy/paste)', kind: 'manual', description: 'You copy a prompt into Claude.ai and paste the reply back. Works with any Claude.ai account; no setup.' },
+  {
+    id: 'claude-live',
+    label: 'Claude (live)',
+    kind: 'remote',
+    description: 'Sends the items shown before each request to Anthropic through your Supabase function. Not end-to-end encrypted. Off until set up.',
+  },
+];
+

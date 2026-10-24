@@ -1,5 +1,6 @@
 /** App-wide UI state: open editors and dialogs, toasts, and recently opened items. */
 import { create } from 'zustand';
+import type { AiJobId } from '../../supabase/functions/_shared/ai-jobs';
 import type { CalendarEvent, Project, Task } from '../data/types';
 import { newId } from '../lib/util';
 import { readDevice, writeDevice } from './deviceStorage';
@@ -53,6 +54,8 @@ interface UIState {
   shortcutsOpen: boolean;
   /** Something outside Explorer asked it to show a search, a tag, or a saved view. */
   explorerRequest: { query?: string; tag?: string; viewId?: string } | null;
+  /** The open Ask Claude window: which job, and for summarize/breakdown which note or project. */
+  askClaude: { job: AiJobId; targetId?: string } | null;
 }
 
 const RECENT_LIMIT = 20;
@@ -70,6 +73,7 @@ export const useUI = create<UIState>(() => ({
   myDayCustomize: false,
   shortcutsOpen: false,
   explorerRequest: null,
+  askClaude: null,
 }));
 
 export const openEditor = (editor: EditorState) => useUI.setState({ editor, commandOpen: false });
@@ -84,6 +88,8 @@ export const setSidebarOpen = (sidebarOpen: boolean) => useUI.setState({ sidebar
 export const setMyDayCustomize = (myDayCustomize: boolean) => useUI.setState({ myDayCustomize });
 export const openShortcuts = () => useUI.setState({ shortcutsOpen: true, commandOpen: false });
 export const closeShortcuts = () => useUI.setState({ shortcutsOpen: false });
+export const openAskClaude = (askClaude: NonNullable<UIState['askClaude']>) => useUI.setState({ askClaude, commandOpen: false });
+export const closeAskClaude = () => useUI.setState({ askClaude: null });
 export const setExplorerRequest = (explorerRequest: UIState['explorerRequest']) => useUI.setState({ explorerRequest });
 
 /** Asks before something destructive. The action only runs if the user confirms in the dialog. */

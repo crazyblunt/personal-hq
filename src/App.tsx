@@ -16,6 +16,7 @@ import { findCommand, useAppCommands } from './shell/commands';
 import { dismissIssues, flush, hasUnsavedChanges, useHQ } from './data/store';
 import { COLLECTIONS, type SectionId, type Settings } from './data/types';
 import { EditorHost } from './editors/EditorHost';
+import { AskClaudeDialog } from './ai/AskClaudeDialog';
 import { CaptureDialog } from './editors/CaptureDialog';
 import { ActivityPage } from './features/activity/ActivityPage';
 import { CalendarPage } from './features/calendar/CalendarPage';
@@ -308,6 +309,7 @@ export function App() {
       <CommandBar />
       <OrganizeDialog />
       <ShortcutsDialog />
+      <AskClaudeDialog />
       <ConfirmHost />
       <Toasts />
     </>

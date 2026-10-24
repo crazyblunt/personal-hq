@@ -1,9 +1,9 @@
-import { Archive, ArchiveRestore, ChevronRight, Columns3, ExternalLink, FileText, FolderKanban, GitBranch, GitPullRequest, Globe, Link2, List, NotebookPen, Pencil, Plus, Terminal, Trash2, X, type LucideIcon } from 'lucide-react';
+import { Archive, ArchiveRestore, ChevronRight, Columns3, ExternalLink, FileText, FolderKanban, GitBranch, GitPullRequest, Globe, Link2, List, NotebookPen, Pencil, Plus, Terminal, Trash2, X, type LucideIcon, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useToday } from '../../app/clock';
 import { navigate } from '../../app/router';
-import { confirmAction, openEditor, toast, touchRecent } from '../../app/ui';
+import { confirmAction, openAskClaude, openEditor, toast, touchRecent } from '../../app/ui';
 import { milestoneProgress, projectProgress } from '../../data/selectors';
 import { addMilestone, archiveProject, createIdea, createNote, deleteProject, removeMilestone, restoreProject, updateMilestone, useHQ } from '../../data/store';
 import { LINK_KIND_LABEL, PROJECT_CATEGORY_LABEL, PROJECT_STATUS_LABEL, TASK_STATUSES, TASK_STATUS_LABEL, type LinkKind } from '../../data/types';
@@ -102,6 +102,9 @@ export function ProjectDetail({ id }: { id: string }) {
         <div className="flex flex-wrap gap-1.5">
           <Button onClick={() => openEditor({ kind: 'project', id })}>
             <Pencil className="size-3.5" aria-hidden="true" /> Edit
+          </Button>
+          <Button onClick={() => openAskClaude({ job: 'breakdown', targetId: id })} title="Claude suggests next tasks. You see exactly what is shared first.">
+            <Sparkles className="size-3.5" aria-hidden="true" /> Break into tasks with Claude
           </Button>
           {archived ? (
             <Button

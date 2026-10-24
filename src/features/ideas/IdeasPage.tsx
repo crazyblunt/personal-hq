@@ -1,8 +1,8 @@
-import { Lightbulb, ScanSearch, X } from 'lucide-react';
+import { Lightbulb, ScanSearch, Sparkles, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { readDevice, writeDevice } from '../../app/deviceStorage';
 import { navigate, useRoute } from '../../app/router';
-import { openEditor, openOrganize } from '../../app/ui';
+import { openAskClaude, openEditor, openOrganize } from '../../app/ui';
 import { useHQ } from '../../data/store';
 import { IDEA_KINDS, IDEA_KIND_LABEL } from '../../data/types';
 import { matchesQuery } from '../../lib/search';
@@ -57,9 +57,14 @@ export function IdeasPage() {
         icon={Lightbulb}
         description="Brain dump: capture first, organize later"
         actions={
-          <Button onClick={openOrganize} title="Rule-based suggestions for tags, links, and tasks">
-            <ScanSearch className="size-3.5" aria-hidden="true" /> Organize review
-          </Button>
+          <>
+            <Button onClick={openOrganize} title="Rule-based suggestions for tags, links, and tasks">
+              <ScanSearch className="size-3.5" aria-hidden="true" /> Organize review
+            </Button>
+            <Button onClick={() => openAskClaude({ job: 'organize' })} title="Claude suggestions for your Inbox ideas. You see exactly what is shared first.">
+              <Sparkles className="size-3.5" aria-hidden="true" /> Ask Claude
+            </Button>
+          </>
         }
       />
       <CaptureBox />

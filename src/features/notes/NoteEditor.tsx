@@ -1,9 +1,9 @@
-import { ChevronLeft, Eye, ListChecks, ListTodo, Pencil, Star, Trash2 } from 'lucide-react';
+import { ChevronLeft, Eye, ListChecks, ListTodo, Pencil, Sparkles, Star, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { registerDraft } from '../../app/drafts';
 import { navigate } from '../../app/router';
-import { confirmAction, openEditor, toast, touchRecent } from '../../app/ui';
+import { confirmAction, openAskClaude, openEditor, toast, touchRecent } from '../../app/ui';
 import { convertNoteToTask, deleteNote, updateNote, useHQ } from '../../data/store';
 import type { Note } from '../../data/types';
 import { formatClock, formatStamp } from '../../lib/dates';
@@ -98,6 +98,17 @@ export function NoteEditor({ note, onBack }: { note: Note; onBack?: () => void }
           </Button>
           <Button size="sm" variant="ghost" aria-pressed={d.favorite} onClick={() => change('favorite', !d.favorite, true)} aria-label={d.favorite ? 'Unfavorite note' : 'Favorite note'}>
             <Star className={cn('size-3.5', d.favorite ? 'fill-current text-warn' : '')} />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            title="Claude summarizes this note. You see exactly what is shared first."
+            onClick={() => {
+              commit();
+              openAskClaude({ job: 'summarize', targetId: note.id });
+            }}
+          >
+            <Sparkles className="size-3" aria-hidden="true" /> Summarize with Claude
           </Button>
           <Button
             size="sm"

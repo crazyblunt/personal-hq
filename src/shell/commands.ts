@@ -22,6 +22,7 @@ import {
   Plus,
   Rows3,
   ScanSearch,
+  Sparkles,
   Sun,
   Table2,
   Upload,
@@ -32,7 +33,7 @@ import { downloadBackup } from '../app/backupActions';
 import { useToday } from '../app/clock';
 import { toggleFocus, useFocus } from '../app/focus';
 import { navigate } from '../app/router';
-import { openCapture, openCommand, openEditor, openOrganize, openShortcuts, setExplorerRequest, setMyDayCustomize, toast, useUI } from '../app/ui';
+import { openAskClaude, openCapture, openCommand, openEditor, openOrganize, openShortcuts, setExplorerRequest, setMyDayCustomize, toast, useUI } from '../app/ui';
 import { createNote, updateSettings, useHQ } from '../data/store';
 import { THEMES, THEME_LABEL } from '../data/types';
 import { NAV_ITEMS } from './nav';
@@ -141,6 +142,12 @@ export function useAppCommands(): AppCommand[] {
         navigate('explorer');
       },
     }));
-    return [...create, ...go, ...viewCommands, ...commands, ...themes];
+    const claude: AppCommand[] = [
+      { id: 'ask-organize', group: 'Claude', label: 'Ask Claude: organize Inbox ideas…', icon: Sparkles, keywords: 'ai suggest tags', run: () => openAskClaude({ job: 'organize' }) },
+      { id: 'ask-summarize', group: 'Claude', label: 'Ask Claude: summarize a note…', icon: Sparkles, keywords: 'ai summary', run: () => openAskClaude({ job: 'summarize' }) },
+      { id: 'ask-breakdown', group: 'Claude', label: 'Ask Claude: break a project into tasks…', icon: Sparkles, keywords: 'ai plan steps', run: () => openAskClaude({ job: 'breakdown' }) },
+      { id: 'ask-plan', group: 'Claude', label: 'Ask Claude: plan my day…', icon: Sparkles, keywords: 'ai today schedule', run: () => openAskClaude({ job: 'plan' }) },
+    ];
+    return [...create, ...go, ...viewCommands, ...commands, ...claude, ...themes];
   }, [today, density, focusRunning, views]);
 }

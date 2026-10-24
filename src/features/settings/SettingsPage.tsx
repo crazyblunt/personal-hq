@@ -1,4 +1,4 @@
-import { Bot, Keyboard, LayoutGrid, Palette, Settings, SlidersHorizontal } from 'lucide-react';
+import { Keyboard, LayoutGrid, Palette, Settings, SlidersHorizontal } from 'lucide-react';
 import { navigate, SECTION_LABEL } from '../../app/router';
 import { confirmAction, openShortcuts, setMyDayCustomize } from '../../app/ui';
 import { SHORTCUTS } from '../../app/shortcuts';
@@ -6,7 +6,6 @@ import { ShortcutList } from '../../shell/ShortcutsDialog';
 import { DEFAULT_WIDGETS } from '../../data/defaults';
 import { updateSettings, useHQ } from '../../data/store';
 import { ACCENTS, PRIORITIES, PRIORITY_LABEL, SECTIONS, THEMES, THEME_LABEL, type AccentName, type Density, type ThemeName } from '../../data/types';
-import { providers } from '../../organize/provider';
 import { cn } from '../../lib/util';
 import { PageHeader, Panel, Segmented } from '../../ui/bits';
 import { Button, Check, Field, Select } from '../../ui/controls';
@@ -15,6 +14,7 @@ import { showWidget } from '../myday/WidgetGrid';
 import { NAV_ITEMS } from '../../shell/nav';
 import { DataSection } from './DataSection';
 import { SyncPanel } from './SyncPanel';
+import { ClaudePanel } from './ClaudePanel';
 
 /** Small swatch previews: desk, panel, bar, text. */
 const THEME_SWATCH: Record<ThemeName, string[]> = {
@@ -185,31 +185,7 @@ export function SettingsPage() {
         <div className="flex flex-col gap-2">
           <SyncPanel />
           <DataSection />
-          <Panel title="Organization helpers" icon={<Bot />}>
-            <div className="flex flex-col gap-2 p-2 text-sm">
-              <p className="text-muted">
-                Tag, category, similarity, to-do, and checklist suggestions are <strong className="text-fg">local rules</strong>: keyword lists, word overlap, and fixed templates that run in this browser. They are labeled as local suggestions and never claim to come from an AI model.
-              </p>
-              <ul className="border border-line bg-inset">
-                {providers.map((p) => (
-                  <li key={p.id} className="flex items-start gap-2 px-2 py-1">
-                    <span className="mt-1 size-2 shrink-0 bg-ok-fill" aria-hidden="true" />
-                    <span>
-                      <span className="block font-bold">{p.label}</span>
-                      <span className="block text-xs text-muted">{p.description}</span>
-                    </span>
-                  </li>
-                ))}
-                <li className="flex items-start gap-2 border-t border-line px-2 py-1 text-subtle">
-                  <span className="mt-1 size-2 shrink-0 bg-line-strong" aria-hidden="true" />
-                  <span>
-                    <span className="block font-bold">AI provider: not connected</span>
-                    <span className="block text-xs">A future integration would run through your own server so API keys never reach this page, and would only be used after you turn it on here.</span>
-                  </span>
-                </li>
-              </ul>
-            </div>
-          </Panel>
+          <ClaudePanel />
         </div>
       </div>
     </>

@@ -1,8 +1,8 @@
-import { CalendarClock, Inbox, ListChecks, ScanSearch, Trash2 } from 'lucide-react';
+import { CalendarClock, Inbox, ListChecks, ScanSearch, Sparkles, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useToday } from '../../app/clock';
-import { confirmAction, openEditor, openOrganize, toast } from '../../app/ui';
+import { confirmAction, openEditor, openAskClaude, openOrganize, toast } from '../../app/ui';
 import { deleteTask, updateTask, useHQ } from '../../data/store';
 import { relativeTime } from '../../lib/dates';
 import { DueChip, EmptyState, PageHeader, Panel, PriorityBadge } from '../../ui/bits';
@@ -23,9 +23,14 @@ export function InboxPage() {
         icon={Inbox}
         description={total ? `${total} item${total === 1 ? '' : 's'} waiting to be organized` : 'Everything is organized'}
         actions={
-          <Button onClick={openOrganize} title="Rule-based suggestions, shown before anything changes">
-            <ScanSearch className="size-3.5" aria-hidden="true" /> Organize review
-          </Button>
+          <>
+            <Button onClick={openOrganize} title="Rule-based suggestions, shown before anything changes">
+              <ScanSearch className="size-3.5" aria-hidden="true" /> Organize review
+            </Button>
+            <Button onClick={() => openAskClaude({ job: 'organize' })} title="Claude suggestions for your Inbox ideas. You see exactly what is shared first.">
+              <Sparkles className="size-3.5" aria-hidden="true" /> Ask Claude
+            </Button>
+          </>
         }
       />
       <CaptureBox allowTask autoFocus />

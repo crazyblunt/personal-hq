@@ -1,8 +1,8 @@
-import { ArrowUpToLine, LayoutGrid, Plus, RotateCcw, Sun } from 'lucide-react';
+import { ArrowUpToLine, LayoutGrid, Plus, RotateCcw, Sparkles, Sun } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useToday } from '../../app/clock';
 import { useMediaQuery, WIDE_QUERY } from '../../app/media';
-import { confirmAction, setMyDayCustomize, useUI } from '../../app/ui';
+import { confirmAction, openAskClaude, setMyDayCustomize, useUI } from '../../app/ui';
 import { DEFAULT_WIDGETS } from '../../data/defaults';
 import { calendarItems, isMyDayTask, isOverdue } from '../../data/selectors';
 import { updateSettings, useHQ } from '../../data/store';
@@ -56,6 +56,11 @@ export function MyDayPage() {
                 }
               >
                 <RotateCcw className="size-3.5" aria-hidden="true" /> Reset layout
+              </Button>
+            )}
+            {!customizing && (
+              <Button variant="ghost" onClick={() => openAskClaude({ job: 'plan' })} title="Claude suggests what to put on today's list. You see exactly what is shared first.">
+                <Sparkles className="size-3.5" aria-hidden="true" /> Plan with Claude
               </Button>
             )}
             <Button variant={customizing ? 'primary' : 'secondary'} onClick={() => setMyDayCustomize(!customizing)} aria-pressed={customizing}>

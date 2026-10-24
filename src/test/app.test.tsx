@@ -2,19 +2,20 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { App } from '../App';
 import { navigate, useRoute } from '../app/router';
-import { openEditor, openOrganize, useUI } from '../app/ui';
+import { openAskClaude, openEditor, openOrganize, useUI } from '../app/ui';
 import { buildExport } from '../data/backup';
 import { createMemoryAdapter } from '../data/adapters/memory';
 import { emptyWorkspace } from '../data/defaults';
 import { DEFAULT_WIDGETS } from '../data/defaults';
-import type { Note, Task } from '../data/types';
+import type { Idea, Note, Task } from '../data/types';
+import { writeAccessCode } from '../ai/live';
 import { convertIdea, createIdea, createNote, createTask, initStore, updateSettings, useHQ } from '../data/store';
 import { clearMatchMedia, mockMatchMedia } from './helpers';
 
 async function renderApp() {
   location.hash = '';
   await initStore(createMemoryAdapter());
-  useUI.setState({ editor: null, commandOpen: false, capture: null, organizeOpen: false, confirm: null, toasts: [], myDayCustomize: false, shortcutsOpen: false });
+  useUI.setState({ editor: null, commandOpen: false, capture: null, organizeOpen: false, confirm: null, toasts: [], myDayCustomize: false, shortcutsOpen: false, askClaude: null });
   const user = userEvent.setup();
   const utils = render(<App />);
   await screen.findByRole('heading', { name: 'My Day', level: 1 });
@@ -392,6 +393,71 @@ describe('Undo for applied suggestions', () => {
     await user.click(await screen.findByRole('button', { name: 'Undo' }));
     expect(useHQ.getState().tasks).toEqual([]);
     expect(useHQ.getState().ideas[0]).toMatchObject({ converted: [], tags: [] });
+  });
+});
+
+describe('Ask Claude', () => {
+  afterEach(() => writeAccessCode(''));
+
+  const organizeReply = (ideaId: string) =>
+    JSON.stringify({
+      suggestions: [
+        { ideaId, reason: 'Science', actions: [{ type: 'add_tags', tags: ['school'], category: null, projectId: null, targetKind: null, targetId: null, to: null }] },
+        { ideaId: 'nope', reason: '', actions: [] },
+      ],
+    });
+
+  it('organizes ideas by copy/paste: preview, paste, review, apply, undo', async () => {
+    const { user } = await renderApp();
+    let i!: Idea;
+    act(() => {
+      i = createIdea({ body: 'Chemistry lab plan' });
+      createNote({ title: 'Private diary' });
+      navigate('ideas');
+    });
+    await user.click(await screen.findByRole('button', { name: 'Ask Claude' }));
+    await user.click(within(openDialog()).getByRole('button', { name: 'Next' }));
+    const data = within(openDialog()).getByLabelText('Data to share');
+    expect(data).toHaveTextContent('Chemistry lab plan');
+    expect(data).not.toHaveTextContent('Private diary');
+    expect(within(openDialog()).queryByRole('button', { name: 'Send to Anthropic' })).toBeNull();
+    await user.click(within(openDialog()).getByRole('button', { name: 'Copy prompt' }));
+    await user.click(within(openDialog()).getByRole('textbox', { name: "Paste Claude's reply" }));
+    await user.paste(`Here you go:\n${organizeReply(i.id)}`);
+    await user.click(within(openDialog()).getByRole('button', { name: 'Check reply' }));
+    expect(within(openDialog()).getByText('1 rejected')).toBeInTheDocument();
+    await user.click(within(openDialog()).getByRole('button', { name: 'Apply selected' }));
+    expect(useHQ.getState().ideas.find((x) => x.id === i.id)!.tags).toEqual(['school']);
+    await user.click(await screen.findByRole('button', { name: 'Undo' }));
+    expect(useHQ.getState().ideas.find((x) => x.id === i.id)!.tags).toEqual([]);
+  });
+
+  it('rejects a malformed reply without changing anything', async () => {
+    const { user } = await renderApp();
+    act(() => {
+      createIdea({ body: 'Chemistry lab plan' });
+      openAskClaude({ job: 'organize' });
+    });
+    const before = JSON.stringify(useHQ.getState().ideas);
+    await user.click(within(openDialog()).getByRole('button', { name: 'Next' }));
+    await user.click(within(openDialog()).getByRole('button', { name: 'Copy prompt' }));
+    await user.click(within(openDialog()).getByRole('textbox', { name: "Paste Claude's reply" }));
+    await user.paste('Sorry, I can’t help with that.');
+    await user.click(within(openDialog()).getByRole('button', { name: 'Check reply' }));
+    expect(within(openDialog()).getByRole('alert')).toHaveTextContent('Not valid JSON');
+    expect(within(openDialog()).queryByRole('button', { name: 'Apply selected' })).toBeNull();
+    expect(JSON.stringify(useHQ.getState().ideas)).toBe(before);
+  });
+
+  it('shows Send to Anthropic only when an access code is saved on this device', async () => {
+    writeAccessCode('CODE');
+    await renderApp();
+    act(() => {
+      createTask({ title: 'Essay', priority: 'high' });
+      openAskClaude({ job: 'plan' });
+    });
+    expect(await within(openDialog()).findByRole('button', { name: 'Send to Anthropic' })).toBeInTheDocument();
+    expect(within(openDialog()).getByLabelText('Data to share')).toHaveTextContent('Essay');
   });
 });
 
