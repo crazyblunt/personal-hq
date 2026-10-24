@@ -13,7 +13,8 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom/vitest", "node"]
   },
-  "include": ["src"]
+  "include": ["src", "supabase/functions/_shared", "supabase/functions/phq-ai/handler.ts", "supabase/functions/phq-ai/handler.test.ts"]
 }
