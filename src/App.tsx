@@ -9,7 +9,9 @@ import { backupDue, snoozeBackupReminder, totalRecords, useStorageHealth } from 
 import { useMinuteNow } from './app/clock';
 import { isTypingTarget } from './app/platform';
 import { navigate, startRouter, useRoute } from './app/router';
-import { anyModalOpen, closeCommand, openCapture, openCommand, useUI } from './app/ui';
+import { anyModalOpen, closeCommand, openCommand, useUI } from './app/ui';
+import { matchShortcut } from './app/shortcuts';
+import { findCommand, useAppCommands } from './shell/commands';
 import { dismissIssues, flush, hasUnsavedChanges, useHQ } from './data/store';
 import { COLLECTIONS, type SectionId, type Settings } from './data/types';
 import { EditorHost } from './editors/EditorHost';
@@ -26,7 +28,6 @@ import { TasksPage } from './features/tasks/TasksPage';
 import { UtilitiesPage } from './features/utilities/UtilitiesPage';
 import { OrganizeDialog } from './organize/OrganizeDialog';
 import { CommandBar } from './shell/CommandBar';
-import { NAV_ITEMS } from './shell/nav';
 import { Shell } from './shell/Shell';
 import { ConfirmHost } from './ui/Dialog';
 import { cn } from './lib/util';
@@ -55,36 +56,28 @@ export function applyAppearance(s: Pick<Settings, 'theme' | 'accent' | 'density'
 
 function useGlobalShortcuts() {
   const pendingG = useRef<number>(0);
+  const commands = useAppCommands();
+  const latest = useRef(commands);
+  latest.current = commands;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const mod = e.metaKey || e.ctrlKey;
-      if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        const bar = useUI.getState().commandOpen;
-        if (bar && anyModalOpen()) closeCommand();
+      if (['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return;
+      const pending = Date.now() - pendingG.current < 1200;
+      const hit = matchShortcut(e, { modalOpen: anyModalOpen(), pendingG: pending, section: useRoute.getState().section });
+      if (pending && !isTypingTarget(e.target)) pendingG.current = 0;
+      if (!hit) return;
+      if ('pendingG' in hit) {
+        pendingG.current = Date.now();
+        return;
+      }
+      e.preventDefault();
+      if (hit.command === 'open-command') {
+        // ⌘K toggles: it closes the bar when the bar is the open window.
+        if (useUI.getState().commandOpen && anyModalOpen()) closeCommand();
         else if (!anyModalOpen()) openCommand();
         return;
       }
-      if (mod || e.altKey || e.defaultPrevented || isTypingTarget(e.target) || anyModalOpen()) return;
-      const key = e.key.toLowerCase();
-      if (Date.now() - pendingG.current < 1200) {
-        pendingG.current = 0;
-        const item = NAV_ITEMS.find((n) => n.key === key);
-        if (item) {
-          e.preventDefault();
-          navigate(item.section);
-        }
-        return;
-      }
-      if (key === 'g') {
-        pendingG.current = Date.now();
-      } else if (e.key === '/') {
-        e.preventDefault();
-        openCommand();
-      } else if (key === 'c') {
-        e.preventDefault();
-        openCapture('idea');
-      }
+      findCommand(latest.current, hit.command)?.run();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
