@@ -483,7 +483,7 @@ export function convertIdea(id: string, to: ConvertTarget): Task | Note | Projec
     const body = idea.url && !idea.body.includes(idea.url) ? `${idea.body}\n\n${idea.url}` : idea.body;
     created = createNote({ title, body, tags: idea.tags, category: idea.category, projectId: idea.projectId, source: { kind: 'idea', id } });
   } else {
-    created = createProject({ name: title, description: withUrl, category: 'other' });
+    created = createProject({ name: title, description: withUrl, category: 'other', tags: idea.tags, itemLinks: [{ kind: 'idea', id }] });
   }
   patch('ideas', id, { converted: [...idea.converted, { kind: to, id: created.id, at: nowIso() }], inbox: false, ...(to === 'project' ? { projectId: created.id } : {}) });
   logActivity({ action: 'converted', entity: 'idea', entityId: id, title, projectId: idea.projectId, detail: `Idea → ${to[0].toUpperCase()}${to.slice(1)}` });
@@ -515,7 +515,7 @@ export function deleteNote(id: string) {
 export function convertNoteToTask(id: string): Task | undefined {
   const note = get().notes.find((x) => x.id === id);
   if (!note) return undefined;
-  const task = createTask({ title: note.title, description: note.body.slice(0, 4000), tags: note.tags, projectId: note.projectId, source: { kind: 'note', id } });
+  const task = createTask({ title: note.title, description: note.body, tags: note.tags, projectId: note.projectId, source: { kind: 'note', id } });
   patch('notes', id, { taskIds: [...note.taskIds, task.id] });
   logActivity({ action: 'converted', entity: 'note', entityId: id, title: note.title, projectId: note.projectId, detail: 'Note → Task' });
   return task;

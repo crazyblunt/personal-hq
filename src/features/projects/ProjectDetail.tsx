@@ -9,7 +9,7 @@ import { addMilestone, archiveProject, createIdea, createNote, deleteProject, re
 import { LINK_KIND_LABEL, PROJECT_CATEGORY_LABEL, PROJECT_STATUS_LABEL, TASK_STATUSES, TASK_STATUS_LABEL, type LinkKind } from '../../data/types';
 import { relativeTime } from '../../lib/dates';
 import { cn, hostOf } from '../../lib/util';
-import { Badge, ColorSquare, DueChip, EmptyState, ExtLink, Panel, ProgressBar, Segmented } from '../../ui/bits';
+import { Badge, ColorSquare, DueChip, EmptyState, ExtLink, Panel, ProgressBar, Segmented, TagChip } from '../../ui/bits';
 import { Button, Check, Input } from '../../ui/controls';
 import { ActivityLine, useOpenEntry } from '../activity/parts';
 import { IdeaCard } from '../ideas/IdeaParts';
@@ -215,6 +215,13 @@ export function ProjectDetail({ id }: { id: string }) {
                     <span key={t} className="border border-line bg-inset px-1 font-mono text-2xs text-muted">
                       {t}
                     </span>
+                  ))}
+                </div>
+              )}
+              {project.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {project.tags.map((t) => (
+                    <TagChip key={t} tag={t} />
                   ))}
                 </div>
               )}

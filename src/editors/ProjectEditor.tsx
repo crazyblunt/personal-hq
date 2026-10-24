@@ -15,12 +15,12 @@ import {
   type ProjectLink,
 } from '../data/types';
 import { cn, isHttpUrl, newId, parseTags } from '../lib/util';
-import { PROJECT_COLOR_HEX } from '../ui/bits';
+import { PROJECT_COLOR_HEX, TagInput } from '../ui/bits';
 import { Button, Field, Input, Select, Textarea } from '../ui/controls';
 import { Dialog } from '../ui/Dialog';
 import { sameJson } from './common';
 
-type Draft = Pick<Project, 'name' | 'description' | 'category' | 'status' | 'color' | 'targetDate' | 'repoUrl' | 'links'> & { techStack: string };
+type Draft = Pick<Project, 'name' | 'description' | 'category' | 'status' | 'color' | 'targetDate' | 'repoUrl' | 'links' | 'tags'> & { techStack: string };
 
 export function ProjectEditor({ id, defaults }: { id?: string; defaults?: Partial<Project> }) {
   const existing = useHQ((s) => (id ? s.projects.find((p) => p.id === id) : undefined));
@@ -35,6 +35,7 @@ export function ProjectEditor({ id, defaults }: { id?: string; defaults?: Partia
       targetDate: p.targetDate ?? null,
       repoUrl: p.repoUrl ?? '',
       links: p.links ?? [],
+      tags: p.tags ?? [],
       techStack: (p.techStack ?? []).join(', '),
     };
   }, [id]); // eslint-disable-line
@@ -60,6 +61,7 @@ export function ProjectEditor({ id, defaults }: { id?: string; defaults?: Partia
       targetDate: d.targetDate,
       repoUrl: d.repoUrl.trim(),
       techStack: parseTags(d.techStack),
+      tags: d.tags,
       links: d.links.filter((l) => l.url.trim()).map((l) => ({ ...l, url: l.url.trim(), label: l.label.trim() })),
     };
     if (existing) {
@@ -145,6 +147,9 @@ export function ProjectEditor({ id, defaults }: { id?: string; defaults?: Partia
             ))}
           </div>
         </fieldset>
+        <Field label="Tags" htmlFor="project-tags" className="sm:col-span-6">
+          <TagInput id="project-tags" value={d.tags} onChange={(v) => set('tags', v)} />
+        </Field>
         <Field label="Tech stack / tools" htmlFor="project-stack" hint="Comma separated" className="sm:col-span-6">
           <Input id="project-stack" value={d.techStack} onChange={(e) => set('techStack', e.target.value)} placeholder="React, Supabase, Tailwind" />
         </Field>

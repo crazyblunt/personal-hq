@@ -1,5 +1,6 @@
 import { createMemoryAdapter } from './adapters/memory';
 import { emptyWorkspace } from './defaults';
+import type { Project } from './types';
 import {
   archiveProject,
   convertIdea,
@@ -161,3 +162,19 @@ describe('persistence', () => {
     expect(state().saveError).toMatch(/storage is full/);
   });
 });
+
+describe('conversions keep content', () => {
+  it('idea → project carries tags and links back to the idea', () => {
+    const i = createIdea({ body: 'Start a podcast #audio #side' });
+    const p = convertIdea(i.id, 'project') as Project;
+    expect(p.tags).toEqual(['audio', 'side']);
+    expect(p.itemLinks).toEqual([{ kind: 'idea', id: i.id }]);
+  });
+
+  it('note → task keeps the whole note', () => {
+    const body = 'x'.repeat(6000);
+    const n = createNote({ title: 'Long', body });
+    expect(convertNoteToTask(n.id)!.description).toBe(body);
+  });
+});
+
