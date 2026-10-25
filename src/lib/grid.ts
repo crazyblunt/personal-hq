@@ -8,6 +8,9 @@
  */
 
 export const GRID_COLS = 12;
+/** Upper bounds that keep corrupt or hand-edited layouts from making placement loops run for minutes. */
+export const GRID_MAX_Y = 500;
+export const GRID_MAX_H = 60;
 
 export interface Rect {
   x: number;
@@ -37,9 +40,9 @@ export function collides(a: Rect, b: Rect): boolean {
 export function clampRect(r: Rect, min: MinSize, cols = GRID_COLS): Rect {
   const num = (v: number, fallback: number) => (Number.isFinite(v) ? Math.round(v) : fallback);
   const w = Math.min(cols, Math.max(min.minW, num(r.w, min.minW)));
-  const h = Math.max(min.minH, num(r.h, min.minH));
+  const h = Math.min(GRID_MAX_H, Math.max(min.minH, num(r.h, min.minH)));
   const x = Math.min(cols - w, Math.max(0, num(r.x, 0)));
-  const y = Math.max(0, num(r.y, 0));
+  const y = Math.min(GRID_MAX_Y, Math.max(0, num(r.y, 0)));
   return { x, y, w, h };
 }
 
@@ -101,9 +104,9 @@ export function resizeTo(items: GridItem[], id: string, size: { w: number; h: nu
 export function tidy(items: GridItem[]): GridItem[] {
   const placed: GridItem[] = [];
   for (const item of [...items].sort((a, b) => a.y - b.y || a.x - b.x)) {
-    const next = { ...item };
-    while (next.y > 0 && !placed.some((p) => collides({ ...next, y: next.y - 1 }, p))) next.y--;
-    placed.push(next);
+    // Rise until the lowest bottom of anything already placed in the same columns (computed directly, not row by row).
+    const floor = placed.filter((p) => p.x < item.x + item.w && item.x < p.x + p.w).reduce((m, p) => Math.max(m, p.y + p.h), 0);
+    placed.push({ ...item, y: Math.min(item.y, floor) });
   }
   const byId = new Map(placed.map((i) => [i.id, i]));
   return items.map((i) => byId.get(i.id)!);

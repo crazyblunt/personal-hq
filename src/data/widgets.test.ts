@@ -45,4 +45,12 @@ describe('widget grid positions', () => {
   it('default widgets all have positions when enabled', () => {
     expect(DEFAULT_WIDGETS.filter((w) => w.enabled).every((w) => typeof w.x === 'number' && typeof w.h === 'number')).toBe(true);
   });
+
+  it('loads quickly even when a synced or imported layout has absurd sizes', () => {
+    const start = performance.now();
+    const s = normalizeSettings({ widgets: [{ id: 'today', enabled: true, size: 'lg', x: 0, y: 3e5, w: 12, h: 1e6 }, { id: 'deadlines', enabled: true, size: 'sm' }] });
+    expect(performance.now() - start).toBeLessThan(100);
+    expect(s.widgets.find((w) => w.id === 'today')).toMatchObject({ y: 500, h: 60 });
+  });
 });
+

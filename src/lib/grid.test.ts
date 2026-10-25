@@ -1,4 +1,4 @@
-import { cellFromPoint, clampRect, collides, firstFit, moveTo, resizeTo, stackOrder, tidy } from './grid';
+import { cellFromPoint, clampRect, collides, firstFit, GRID_MAX_H, GRID_MAX_Y, moveTo, resizeTo, stackOrder, tidy } from './grid';
 
 const anyMin = () => ({ minW: 1, minH: 1 });
 
@@ -70,4 +70,30 @@ describe('grid engine', () => {
     expect(cellFromPoint({ x: 205, y: 85 }, { left: 0, top: 0, width: 1200 }, 32, 8)).toEqual({ x: 2, y: 2 });
     expect(cellFromPoint({ x: -50, y: -50 }, { left: 0, top: 0, width: 1200 }, 32, 8)).toEqual({ x: 0, y: 0 });
   });
+
+  it('caps absurd heights and rows so corrupt data cannot freeze the page', () => {
+    expect(clampRect({ x: 0, y: 1e9, w: 4, h: 1e6 }, { minW: 1, minH: 1 })).toEqual({ x: 0, y: GRID_MAX_Y, w: 4, h: GRID_MAX_H });
+    expect([GRID_MAX_Y, GRID_MAX_H]).toEqual([500, 60]);
+  });
+
+  it('tidy jumps instead of stepping row by row', () => {
+    const start = performance.now();
+    const out = tidy([
+      { id: 'a', x: 0, y: 1e7, w: 4, h: 2 },
+      { id: 'b', x: 0, y: 2e7, w: 4, h: 2 },
+    ]);
+    expect(out.map((i) => i.y)).toEqual([0, 2]);
+    expect(performance.now() - start).toBeLessThan(50);
+  });
+
+  it('tidy never moves a widget past one above it', () => {
+    const out = tidy([
+      { id: 'a', x: 0, y: 0, w: 4, h: 2 },
+      { id: 'b', x: 4, y: 0, w: 4, h: 6 },
+      { id: 'd', x: 0, y: 6, w: 8, h: 2 },
+      { id: 'e', x: 0, y: 10, w: 4, h: 2 },
+    ]);
+    expect(out.find((i) => i.id === 'e')!.y).toBe(8);
+  });
 });
+
