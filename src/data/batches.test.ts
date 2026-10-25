@@ -1,6 +1,7 @@
 import { createMemoryAdapter } from './adapters/memory';
 import { recordBatch, undoBatch, useBatches } from './batches';
-import { applyRemoteChanges, convertIdea, createIdea, createTask, getAdapter, initStore, updateIdea, updateTask, useHQ } from './store';
+import { applyRemoteChanges, convertIdea, createIdea, createNote, createTask, getAdapter, initStore, updateIdea, updateTask, useHQ } from './store';
+import { linkItems } from './linking';
 
 beforeEach(async () => {
   await initStore(createMemoryAdapter());
@@ -53,4 +54,32 @@ describe('undoable batches', () => {
     expect(useBatches.getState().list[0].label).toBe('B11');
     expect(await getAdapter().readAux!('undo')).toHaveLength(10);
   });
+
+  it('keeps a created record that other items now point at, and reports it', () => {
+    const i = createIdea({ body: 'Start a podcast' });
+    const b = recordBatch('Organize', 'claude', () => {
+      convertIdea(i.id, 'project');
+    })!;
+    const project = useHQ.getState().projects[0];
+    createTask({ title: 'Buy a mic', projectId: project.id });
+    const t = createTask({ title: 'Outline episode 1' });
+    const n = createNote({ title: 'Show notes' });
+    linkItems({ kind: 'note', id: n.id }, { kind: 'task', id: t.id });
+    expect(undoBatch(b.id)).toEqual({ restored: 1, removed: 0, skipped: ['Start a podcast (kept: other items use it)'] });
+    expect(useHQ.getState().projects).toHaveLength(1);
+    expect(useHQ.getState().tasks.find((x) => x.title === 'Buy a mic')!.projectId).toBe(project.id);
+  });
+
+  it('keeps a created task that a note now links to', () => {
+    const i = createIdea({ body: 'Email the teacher' });
+    const b = recordBatch('Organize', 'claude', () => {
+      convertIdea(i.id, 'task');
+    })!;
+    const task = useHQ.getState().tasks[0];
+    const n = createNote({ title: 'Class notes' });
+    linkItems({ kind: 'note', id: n.id }, { kind: 'task', id: task.id });
+    expect(undoBatch(b.id).skipped).toEqual(['Email the teacher (kept: other items use it)']);
+    expect(useHQ.getState().tasks).toHaveLength(1);
+  });
 });
+

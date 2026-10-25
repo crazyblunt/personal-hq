@@ -65,6 +65,36 @@ function titleOf(collection: CollectionName, rec: Rec): string {
   return fromStore ?? r.title ?? r.name ?? r.body?.slice(0, 60) ?? rec.id;
 }
 
+type AnyRec = Rec & {
+  projectId?: string | null;
+  taskIds?: string[];
+  relatedIds?: string[];
+  itemLinks?: { kind: string; id: string }[];
+  source?: { kind: string; id: string } | null;
+};
+
+/**
+ * True when any record outside the batch's own new records points at this
+ * one: a project's tasks/notes/ideas/events/prompts/bugs, a note's linked
+ * tasks, related ideas, item links, or a converted item's source. Undo keeps
+ * such a record instead of leaving those pointers dangling.
+ */
+function isReferenced(collection: CollectionName, id: string, createdKeys: Set<string>): boolean {
+  const kind = KIND_OF[collection];
+  const ws = useHQ.getState();
+  for (const name of ['tasks', 'notes', 'ideas', 'projects', 'events', 'bugs', 'prompts'] as const) {
+    for (const r of ws[name] as AnyRec[]) {
+      if (createdKeys.has(`${name}:${r.id}`) || (name === collection && r.id === id)) continue;
+      if (collection === 'projects' && r.projectId === id) return true;
+      if (collection === 'tasks' && r.taskIds?.includes(id)) return true;
+      if (collection === 'ideas' && r.relatedIds?.includes(id)) return true;
+      if (kind && r.itemLinks?.some((l) => l.kind === kind && l.id === id)) return true;
+      if (kind && r.source?.kind === kind && r.source.id === id) return true;
+    }
+  }
+  return false;
+}
+
 /** Runs `fn` and records what it changed. Returns null when nothing changed. */
 export function recordBatch(label: string, source: BatchRecord['source'], fn: () => void): BatchRecord | null {
   const touched = new Map<string, { collection: CollectionName; before: Rec }>();
@@ -110,11 +140,17 @@ export function undoBatch(id: string): UndoReport {
     restoreRecord(c.collection, c.before as never);
     report.restored++;
   }
+  // Restorations above have already run, so references the batch itself made are gone by now.
+  const createdKeys = new Set(batch.created.map((c) => `${c.collection}:${c.id}`));
   for (const c of batch.created) {
     const cur = findRec(c.collection, c.id);
     if (!cur) continue;
     if (cur.updatedAt !== c.afterStamp) {
       report.skipped.push(titleOf(c.collection, cur));
+      continue;
+    }
+    if (isReferenced(c.collection, c.id, createdKeys)) {
+      report.skipped.push(`${titleOf(c.collection, cur)} (kept: other items use it)`);
       continue;
     }
     removeRecords(c.collection, (r) => r.id === c.id);
