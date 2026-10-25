@@ -11,7 +11,7 @@ export PATH="$HOME/.local/node/bin:$PATH"
 ```
 
 - `npm run dev`: dev server on :5173
-- `npm test`: Vitest (30 files, 218 tests, about 15 s; includes `supabase/functions/phq-ai/handler.test.ts`)
+- `npm test`: Vitest (30 files, 230 tests, about 15 s; includes `supabase/functions/phq-ai/handler.test.ts`)
 - `npm run typecheck`: `tsc -b`
 - `npm run build`: typecheck, then emits `dist/index.html` (hosted app) and `dist/artifact.html` (Claude artifact copy)
 - `npm run preview`: serves `dist/` on :4173
@@ -76,10 +76,10 @@ Data flows one way: components read from `useHQ` (zustand) and change data only 
 
 ### Live Claude function
 
-`supabase/functions/phq-ai/` on project `kpodgifoehudokciwlwq`, deployed 2026-10-25 through the Supabase connector as version 1, `verify_jwt: false` (the `x-phq-access` code is the gate). Files: `index.ts` (Deno entry, `npm:@anthropic-ai/sdk@0.133.0`), `handler.ts` (all request logic, runtime-free, tested), `../_shared/ai-jobs.ts`.
+`supabase/functions/phq-ai/` on project `kpodgifoehudokciwlwq`, deployed 2026-10-25 through the Supabase connector (now version 2), `verify_jwt: false` (the `x-phq-access` code is the gate). Files: `index.ts` (Deno entry, `npm:@anthropic-ai/sdk@0.133.0`), `handler.ts` (all request logic, runtime-free, tested), `../_shared/ai-jobs.ts`.
 
 - Verified after deploy: POST `{"job":"ping"}` → 503 `not_configured` naming both missing secrets; preflight from `https://crazyblunt.github.io` → 204 with CORS; a foreign `Origin` → 403. Settings › Claude › Test connection shows the same.
-- Secrets the user sets in the dashboard: `ANTHROPIC_API_KEY`, `PHQ_AI_ACCESS_CODE`, optional `PHQ_AI_MODEL` (default `claude-opus-5-5`). None are set yet, so **no real Claude call has been tested**. The first live request will be the first check of the SDK call shape (`beta.messages.create` with `output_config: {effort, format: {type: 'json_schema'}}` and, for Opus/Sonnet/Fable, `fallbacks: 'default'` + beta `server-side-fallback-2026-07-01`).
+- Secrets the user sets in the dashboard: `ANTHROPIC_API_KEY`, `PHQ_AI_ACCESS_CODE` (at least 20 characters, or the function refuses to run), optional `PHQ_AI_MODEL` (default `claude-opus-5-5`). None are set yet, so **no real Claude call has been tested**. The first live request will be the first check of the SDK call shape (`beta.messages.create` with `output_config: {effort, format: {type: 'json_schema'}}` and, for Opus/Sonnet/Fable, `fallbacks: 'default'` + beta `server-side-fallback-2026-07-01`).
 - Redeploy with the connector (`deploy_edge_function`, same three files) or `supabase functions deploy phq-ai --no-verify-jwt`.
 
 ### Gotchas
