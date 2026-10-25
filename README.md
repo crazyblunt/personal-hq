@@ -2,7 +2,7 @@
 
 A personal workspace that looks and works like an early-2000s desktop utility: one place for today's tasks, deadlines, ideas, notes, projects, and a calendar. It grew out of **Agent Command Center** and keeps everything that app stored.
 
-Everything runs in your browser. There is no account, server, database, or paid service.
+Everything runs in your browser. There is no account and no paid service. Two optional extras use a free Supabase project: sync between your devices, and live Claude suggestions (which need your own Claude API key). Neither is required.
 
 **Open it:** https://crazyblunt.github.io/personal-hq/
 
@@ -32,16 +32,21 @@ The Claude copy is not changed. To keep your Mac and phone in step from then on,
 
 | Section | What it does |
 | --- | --- |
-| **My Day** | Customizable dashboard: today's tasks and priorities, deadlines, active projects with progress, recent captures, a 30-day activity graph, quick actions, and optional clock, countdowns, focus timer, shortcuts, and random idea widgets. Drag widgets, resize them (S/M/L), hide or show them. |
-| **Inbox** | Everything captured but not organized yet: ideas and Inbox-status tasks. Turn items into tasks, notes, or projects, keep them as ideas, or delete them. |
+| **My Day** | A dashboard laid out on a 12-column grid: today's tasks and priorities, deadlines (including idea reminders), active projects with progress, recent captures, a 30-day activity graph, quick actions, and optional clock, countdowns, focus timer, shortcuts, and random idea widgets. **Customize** lets you drag a widget by its title bar, resize it from its corner, show or hide it, **Tidy up** gaps, or reset. On a phone the widgets stack in one column. **Plan with Claude** suggests what to put on today's list. |
+| **Inbox** | Everything captured but not organized yet: ideas and Inbox-status tasks. Turn items into tasks, notes, or projects, keep them as ideas, or delete them. **Organize review** (local rules) and **Ask Claude** suggest tags, categories, links, and conversions. |
 | **Tasks** | List views (My Day, Upcoming, Overdue, All open, Completed), filters (project, priority, category, status), search, sorting, and a drag-and-drop board. Subtasks, due dates, categories, tags, project/milestone/calendar-event links. |
-| **Calendar** | Month, week, and agenda views of events, task due dates, milestones, and project target dates. Overdue items are flagged. |
-| **Ideas** | Brain dump. Type and press Enter. Links, `#tags`, and reminders are detected. Favorites, archive, related-idea links, and conversion to tasks, notes, or projects. |
-| **Projects** | Coding projects, school work, business ideas, and goals. Progress is computed from the project's tasks. Milestones, links (repository, Claude Code sessions, pull requests, docs, sites), bugs, notes, ideas, history, archive and restore. |
-| **Notes** | Searchable notes with autosave, tags, categories, favorites, project and task links, and a preview that renders `#` headings, bullets, and tickable `- [ ]` checklists. Includes the **Prompt library** from Agent Command Center. |
+| **Calendar** | Month, week, and agenda views of events, task due dates, milestones, project target dates, and idea reminders. Overdue items are flagged. |
+| **Ideas** | Brain dump. Type and press Enter. Links, `#tags`, and reminders are detected. Favorites, archive, links to other items, and conversion to tasks, notes, or projects (the idea is kept). Each card shows what the idea became and how many links it has. |
+| **Projects** | Coding projects, school work, business ideas, and goals. Progress is computed from the project's tasks. Tags, milestones, bookmarks (repository, Claude Code sessions, pull requests, docs, sites), bugs, notes, ideas, linked items, history, archive and restore. **Break into tasks with Claude** proposes next tasks. |
+| **Notes** | Searchable notes with autosave, tags, categories, favorites, project links, linked items, and a preview that renders `#` headings, bullets, and tickable `- [ ]` checklists. **Summarize with Claude** adds a summary above the note. Includes the **Prompt library** from Agent Command Center. |
+| **Explorer** | One table of every task, note, idea, and project. Filter by type, text, tag, project, and state (open, done, archived); click a column to sort; save the current filters and sort as a named view. The **Tags** tab lists every tag with counts and can rename, merge, or remove a tag everywhere at once. |
 | **Activity** | The log of real changes you made, with a daily graph and filters. |
 | **Utilities** | Clock, countdowns, focus timer, random idea picker, recently used items, and your own shortcuts. |
-| **Settings** | Themes, accent colors, density, startup page, defaults, widget layout, keyboard reference, and all data tools (backup, import, recovery). |
+| **Settings** | Themes, accent colors, density, startup page, defaults, My Day widgets, keyboard reference, sync, data tools (backup, import, recovery), and Claude. |
+
+### Links between items
+
+Every task, note, idea, and project has a **Linked** panel listing everything it's connected to, in both directions: links you added, items that link to it, the idea or note it came from, what an idea became, related ideas, and a note's linked tasks. **+ Link…** searches all four kinds of item. Links to an item that has been deleted are hidden, not removed.
 
 ### Quick add syntax (tasks)
 
@@ -52,21 +57,28 @@ Only the title is required. Optional shortcuts anywhere in the line:
 - `due:fri`, `due:tomorrow`, `due:2026-11-03`, `due:+3` set the due date
 - ending with `today` or `tomorrow` also sets the due date ("Call mom tomorrow")
 
-### Keyboard
+### Keyboard and menus
+
+Press `?` anywhere for the full, searchable list. On a wide screen the menu bar (File, View, Go, Tools, Help) has every command with its shortcut; the command bar has them all too.
 
 | Keys | Action |
 | --- | --- |
-| `Ctrl+K` / `⌘K` | Command bar: search everything, jump to sections, create items, run commands |
-| `/` | Command bar (when not typing in a field) |
-| `C` | Quick capture (when not typing in a field) |
-| `G` then a letter | Go to a section: D My Day, I Inbox, T Tasks, C Calendar, E Ideas, P Projects, N Notes, A Activity, U Utilities, S Settings |
-| `↑` `↓` `Enter` `Esc` | Move, run, and close in the command bar; `Esc` closes windows (asking first if you have unsaved edits) |
+| `Ctrl+K` / `⌘K` | Command bar: search everything, jump to sections, create items, run commands, open saved views |
+| `/` | Command bar |
+| `?` | Keyboard shortcuts |
+| `C` | Quick capture |
+| `N` | New item for this page: a task (My Day, Tasks), an idea (Inbox, Ideas), a note, a project, or an event |
+| `G` then a letter | Go to a section: D My Day, I Inbox, T Tasks, C Calendar, E Ideas, P Projects, N Notes, X Explorer, A Activity, U Utilities, S Settings |
+| `Ctrl+Enter` / `⌘Enter` | Save the open editor window |
+| `Esc` | Close a window (asks first if you have unsaved edits) |
+| `↑` `↓` `Enter` | Move and run in the command bar; start with `>` to show only commands |
+| Arrows / `Shift`+arrows | In My Day's customize mode, with a widget's grip focused: move / resize it |
 
-In the command bar, start with `>` to show only commands.
+Single-key shortcuts never fire while you're typing in a field or while a window is open.
 
 ## Your data
 
-**Where it lives.** All tasks, ideas, notes, projects, events, bugs, prompts, the activity log, settings, and widget layout are saved in this browser's IndexedDB database (`personal-hq`), which has room for hundreds of megabytes. Changes are saved automatically; the status bar shows "Saved", "Saving…", or an error. Earlier versions used `localStorage`; the first time this version opens it copies that data over and leaves the old copy in place. If IndexedDB can't be opened, the app falls back to `localStorage`.
+**Where it lives.** All tasks, ideas, notes, projects, events, bugs, prompts, the activity log, settings, widget layout, links between items, and saved Explorer views are saved in this browser's IndexedDB database (`personal-hq`), which has room for hundreds of megabytes. Changes are saved automatically; the status bar shows "Saved", "Saving…", or an error. Earlier versions used `localStorage`; the first time this version opens it copies that data over and leaves the old copy in place. If IndexedDB can't be opened, the app falls back to `localStorage`.
 
 **Protected storage.** On startup the app asks the browser to treat its storage as persistent, so it isn't cleared automatically when space runs low or (in Safari) after a stretch without use. Browsers decide on their own; installed apps are usually granted it. Settings › Data shows whether it was granted, and how much space is used.
 
@@ -83,6 +95,10 @@ In the command bar, start with `>` to show only commands.
 - *Replace everything*: requires an extra confirmation.
 
 Before any replace, restore, or *Delete all data*, a safety copy of the current data is saved and can be restored from Settings › Data. Records that can't be read are listed and skipped; unknown values (such as an unrecognized status) are corrected and reported.
+
+**Kept on each device only.** The undo history for applied suggestions (last 10) and the Claude access code are stored on the device and are never synced or included in backups.
+
+**Older copies.** Links between items are a newer field. If you edit an item in an older copy of the app (the Claude artifact, or a tab that hasn't reloaded since an update), that copy doesn't know about the item's links and drops them when it saves.
 
 **Damaged or old data.** If stored data can't be parsed, it is copied to a recovery slot (Settings › Data › Recovery) instead of being thrown away. Data saved by a newer version of the app is never overwritten.
 
@@ -115,13 +131,43 @@ After that, changes sync a few seconds after you make them, every minute while t
 
 **The server** is a free Supabase project (`personal-hq`, US East). Its only parts are one table, closed to direct access, and three functions (`supabase/migrations/`). Free projects pause after about a week with no requests at all; normal use keeps it awake, and a paused project can be restored from the Supabase dashboard. Sync isn't available inside the Claude artifact, which can't connect to other servers.
 
-## Privacy and local suggestions
+## Suggestions and Claude
 
-With sync off, nothing is sent to any server; fonts from Google Fonts are the only network request. With sync on, only encrypted records go to the sync server (see above).
+Personal HQ works fully without Claude. There are three sources of suggestions, listed in Settings › Claude:
 
-The tag, category, similar-item, "looks like a to-do", and checklist suggestions are **local rules**: keyword lists, word overlap, and fixed templates in `src/organize/rules.ts`. They are labeled as local suggestions everywhere and never claim to come from an AI model. The organization review shows every suggestion with its reason; nothing changes until you select items and press Apply.
+- **Local rules** (Organize review): keyword lists, word overlap, and fixed templates in `src/organize/rules.ts`. They run in the browser, send nothing anywhere, and are labeled as local suggestions everywhere.
+- **Claude, copy/paste** (no setup): Ask Claude builds a prompt, you paste it into Claude.ai (any plan) and paste the reply back.
+- **Claude, live** (optional, set up below): the same jobs, sent through your own Supabase function.
 
-To add a real AI provider later, implement `OrganizerProvider` in `src/organize/provider.ts` with a `review()` that calls **your own server**, which holds the API key. Never put API keys in this frontend, and only send data after the user turns the provider on in Settings.
+**Jobs, and exactly what each one shares.** Before anything is copied or sent, the Ask Claude window shows the exact data, and nothing else from your workspace is included (no settings, sync code, activity, or other items).
+
+| Job | Where | What it shares |
+| --- | --- | --- |
+| Organize ideas | Ideas, Inbox, Tools menu | The ideas you tick (title, text, link, tags, category), your tag names, active project names |
+| Summarize a note | Note toolbar | That note's title and text |
+| Break a project into tasks | Project page | Project name, description, milestones, and the titles of its tasks |
+| Plan my day | My Day | Today's date, up to 60 relevant open tasks (title, priority, status, due date, project name), today's event titles and times |
+
+**Checks before anything changes.** A reply must be JSON in the job's exact shape, or it is rejected and nothing changes. Suggestions that mention an item that wasn't shared, use an action the job doesn't allow, or contain an invalid date are rejected and listed with the reason. Text is length-limited and shown as plain text; nothing in a reply is run or opened.
+
+**Review and undo.** Each change shows before → after with a checkbox. Tags are added, never replaced; a summary goes above the note's text, which stays; converting an idea keeps the idea; likely duplicate tasks start unticked. Apply runs everything as one batch: **Undo** in the confirmation (and in Settings › Claude for the last 10 batches) puts it all back, skipping anything you've edited since. The local Organize review works the same way.
+
+### Set up live mode (optional)
+
+Live mode costs money only for the Claude API calls themselves; the Supabase function fits the free plan. A Claude.ai subscription does not include API use.
+
+1. In the Claude Console, create an API key, add credits, and set a monthly spending limit.
+2. In the Supabase dashboard (project `personal-hq`), open Edge Functions › Secrets and add:
+   - `ANTHROPIC_API_KEY`: the key from step 1
+   - `PHQ_AI_ACCESS_CODE`: a long random code (Settings › Claude › **Generate a code** makes one)
+   - optionally `PHQ_AI_MODEL`: defaults to `claude-opus-5-5`; `claude-haiku-5-5` costs far less
+3. On each device, paste the same access code into Settings › Claude, press **Save**, then **Test connection**. It never calls Claude and costs nothing.
+
+The function `phq-ai` (`supabase/functions/phq-ai/`) is already deployed to the project. If it ever needs redeploying: `supabase functions deploy phq-ai --no-verify-jwt`. It accepts only the four jobs above, builds the instructions itself, checks the access code, limits request size, and never logs what you send. Live requests are **not** end-to-end encrypted: Anthropic receives the data shown in the preview. The API key stays on the server; the app only has the access code. Live mode isn't available inside the Claude artifact, which can't connect to other servers.
+
+### Other privacy notes
+
+With sync and live Claude off, nothing is sent to any server; fonts from Google Fonts are the only network request. With sync on, only encrypted records go to the sync server (see above).
 
 Project links (GitHub repositories, Claude Code sessions, pull requests) are bookmarks that open in a new tab. Personal HQ cannot read or control those services, and the calendar is not connected to Google, Apple, or any other calendar.
 
@@ -154,15 +200,21 @@ Note: every GitHub Pages site under `crazyblunt.github.io` shares one browser st
 
 ```
 src/
-  data/          data model, validation, storage adapters, migration, store, selectors, backup
+  data/          data model, validation, storage adapters, migration, store, selectors, backup,
+                 links (linking.ts), Explorer rows and views, tags, undo batches
     adapters/    StorageAdapter interface; IndexedDB, localStorage, and in-memory implementations
+  ai/            Ask Claude: inputs, copy/paste prompt, reply validation, review and apply, live client
   sync/          end-to-end encrypted sync: code and keys, engine, server transport, controller
   organize/      local rule-based suggestions and the provider interface
   app/           routing, UI state, clock, focus timer, file saving, device-only preferences
   shell/         title bar, sidebar, status bar, command bar
   editors/       editor windows (task, event, project, idea, bug, prompt) and quick capture
   features/      one folder per section
-  ui/            shared controls: buttons, fields, dialogs, panels, chips
+  ui/            shared controls: buttons, fields, dialogs, panels, chips, Linked panel
+  lib/           dates, quick add, search, the My Day grid engine
+supabase/
+  migrations/    sync table and functions
+  functions/     phq-ai (live Claude) and _shared/ai-jobs.ts (job definitions shared with the app)
 ```
 
 Components never touch storage directly. All persistence goes through `StorageAdapter` (`src/data/adapters/types.ts`). Sync sits beside it: it reads the workspace, applies incoming changes through the store, and keeps its own state (code, last change seen, deletions) in the adapter's side store.

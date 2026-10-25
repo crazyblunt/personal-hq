@@ -11,7 +11,7 @@ export PATH="$HOME/.local/node/bin:$PATH"
 ```
 
 - `npm run dev`: dev server on :5173
-- `npm test`: Vitest (14 files, 102 tests, about 5 s)
+- `npm test`: Vitest (30 files, 218 tests, about 15 s; includes `supabase/functions/phq-ai/handler.test.ts`)
 - `npm run typecheck`: `tsc -b`
 - `npm run build`: typecheck, then emits `dist/index.html` (hosted app) and `dist/artifact.html` (Claude artifact copy)
 - `npm run preview`: serves `dist/` on :4173
@@ -20,7 +20,7 @@ Pushing to `main` runs `.github/workflows/deploy.yml` (npm ci → test → build
 
 ## Handoff
 
-State as of 2026-10-22: all work is committed and pushed, CI is green, and the Supabase migrations in `supabase/migrations/` match what is applied. The user has not yet imported their real data into the hosted app or turned sync on.
+State as of 2026-10-25: the My Day grid, shortcut registry and menu bar, links/Explorer/tags, and Ask Claude work (spec `docs/superpowers/specs/2026-10-24-myday-grid-shortcuts-organize-claude-design.md`, plan in `docs/superpowers/plans/`) is on branch `feature/myday-grid-organize-claude`, not yet merged into `main` or pushed. The Supabase function `phq-ai` is deployed (see "Live Claude function"). The Supabase migrations in `supabase/migrations/` match what is applied. The user has not yet imported their real data into the hosted app, turned sync on, or set up live Claude.
 
 ### Architecture
 
@@ -28,18 +28,24 @@ Data flows one way: components read from `useHQ` (zustand) and change data only 
 
 | Area | Files | Notes |
 | --- | --- | --- |
-| Model | `src/data/types.ts` | 8 collections (tasks, ideas, notes, projects, events, bugs, prompts, activity) + `settings`. Dates without time are `YYYY-MM-DD` "date keys"; timestamps are ISO. |
+| Model | `src/data/types.ts` | 8 collections (tasks, ideas, notes, projects, events, bugs, prompts, activity) + `settings`. Dates without time are `YYYY-MM-DD` "date keys"; timestamps are ISO. Tasks, notes, ideas, and projects have `itemLinks: ItemRef[]`; projects have `tags`; settings has `views` (saved Explorer views) and widget `x/y/w/h`. |
 | Validation | `src/data/normalize.ts` | Every record from storage, imports, and sync goes through `normalizeCollection`. Unusable records are errors; bad enum values fall back to defaults with a warning. |
-| Store | `src/data/store.ts` | Actions, activity logging (edits to the same item within 10 min coalesce; log capped at `ACTIVITY_LIMIT` = 3000), save queue (`flush`), `replaceWorkspace` (takes a safety snapshot first), sync hooks (`onLocalDelete`, `applyRemoteChanges`). |
+| Store | `src/data/store.ts` | Actions, activity logging (edits to the same item within 10 min coalesce; log capped at `ACTIVITY_LIMIT` = 3000), save queue (`flush`), `replaceWorkspace` (takes a safety snapshot first), sync hooks (`onLocalDelete`, `applyRemoteChanges`). For other `src/data` modules only: `patchRecord`, `removeRecords`, `restoreRecord`, and `setBatchRecorder` (hooks `patch`/`insert`/`removeWhere` for undo). |
+| Links | `src/data/linking.ts`, `src/ui/LinkedItems.tsx` | `buildLinkIndex` folds `itemLinks`, `relatedIds`, note `taskIds`, `source`, and `converted` into one connection list per item, one entry per pair (precedence: source/converted-to > related idea > linked task/note > linked/linked-from). Missing targets are hidden. `useLinkIndex` keeps one cached index for the whole app. |
+| Explorer, tags | `src/data/explorer.ts`, `src/data/tags.ts`, `src/features/explorer/` | Pure row/filter/sort functions; views stored in settings; `renameTag` (renaming onto an existing tag merges) and `removeTag` patch every item and log one activity entry. |
+| Undo | `src/data/batches.ts`, `src/app/undo.ts` | `recordBatch(label, source, fn)` records previous versions and created ids; `undoBatch` restores/removes through the store, skipping records changed since (compared by `updatedAt`). Last 10 kept in adapter aux `undo` (device only). Used by Claude apply and the local Organize review. |
+| My Day grid | `src/lib/grid.ts`, `src/data/defaults.ts`, `src/features/myday/WidgetGrid.tsx` | Pure grid engine (12 columns; collisions push down; `tidy` floats up). `WIDGET_SIZE_HINTS`, `placeWidgets` (fills missing positions, used by the normalizer as migration from S/M/L). Below 1024px widgets stack in reading order. |
+| Commands, shortcuts | `src/shell/commands.ts`, `src/app/shortcuts.ts`, `src/shell/MenuBar.tsx`, `src/shell/ShortcutsDialog.tsx` | Every command has a stable id in `useAppCommands`; `SHORTCUTS` + `matchShortcut` (pure, tested) drive the key handler; the menu bar, `?` window, Settings › Keyboard, and command bar hints all read these. |
+| Claude | `src/ai/`, `supabase/functions/_shared/ai-jobs.ts`, `supabase/functions/phq-ai/` | Four jobs. `inputs.ts` builds the minimal data per job; `prompt.ts` the copy/paste prompt; `extract.ts` pulls JSON out of a pasted reply; `validate.ts` checks shape, ids (only ids that were sent), actions, dates, lengths; `apply.ts` builds review rows and applies a batch; `live.ts` calls the function; `AskClaudeDialog.tsx` is the window. |
 | Derived data | `src/data/selectors.ts` | My Day rules, task views, project progress (completed ÷ total tasks), calendar items, activity series. Pure and tested. |
 | Storage | `src/data/adapters/` | `indexeddb.ts` (default) wraps `idbStorage.ts`, a `Storage`-shaped in-memory map written through to IndexedDB, so it reuses all of `local.ts`. Fallbacks: `local.ts` (localStorage), `memory.ts`. Keys: `phq:<collection>`, `phq:settings`, `phq:meta`, `phq:snapshot` (one safety copy), `phq:daily:<date>` (last 7), `phq:aux:<name>` (sync state), `phq:recovery:*` (unreadable data kept, never dropped). |
 | Legacy | `src/data/legacy.ts` | One-time migration from Agent Command Center's `acc:*` localStorage keys. Never modifies or deletes them. |
 | Backup | `src/data/backup.ts`, `src/app/backupActions.ts` | Export JSON; import with preview and three modes (`add` default, `update`, `replace`). Accepts Agent Command Center exports. |
 | Safety | `src/app/safety.ts` | `navigator.storage.persist()`, storage estimate, daily snapshots (IndexedDB only), backup reminder timing. |
 | Sync | `src/sync/` | See below. |
-| App state | `src/app/` | `router.ts` (hash tokens), `ui.ts` (open editors, dialogs, toasts, recent items), `clock.ts` (one shared ticker), `focus.ts`, `deviceStorage.ts` (per-device prefs under `phq:device:*`, not backed up or synced). |
+| App state | `src/app/` | `router.ts` (hash tokens), `ui.ts` (open editors, dialogs, toasts with an optional action button, recent items, cross-page requests), `clock.ts` (one shared ticker), `focus.ts`, `media.ts` (`useMediaQuery`), `deviceStorage.ts` (per-device prefs under `phq:device:*`, not backed up or synced; includes `ai-code`). |
 | UI | `src/shell/`, `src/editors/`, `src/features/<section>/`, `src/ui/` | Shell = title bar, sidebar, status bar, command bar. Editors are modal windows opened via `openEditor()` and rendered by `EditorHost`. Shared controls in `src/ui/`. |
-| Organizer | `src/organize/` | Local keyword rules, word overlap, fixed checklist templates. Labeled "local suggestions" everywhere. `provider.ts` is the seam for a future AI provider (must go through a user's own server, opt-in). |
+| Organizer | `src/organize/` | Local keyword rules, word overlap, fixed checklist templates. Labeled "local suggestions" everywhere. `provider.ts` lists `SUGGESTION_SOURCES` (local, Claude copy/paste, Claude live) for Settings › Claude. |
 | Theming | `src/index.css` | All colors are CSS variables. `data-hq-theme`, `data-hq-accent`, `data-hq-density` on `<html>` swap tokens. Sizes are rem, so density changes the root font size. |
 | Install/offline | `public/manifest.webmanifest`, `public/sw.js`, `scripts/make-icons.mjs` | Service worker is network-first for the app, cache-first for Google Fonts. Icons are generated by a dependency-free pixel-art script. |
 | Build | `vite.config.ts` | `singleFile()` plugin inlines JS/CSS into one HTML file and writes `artifact.html` (no doc wrapper, no manifest/SW tags). |
@@ -68,6 +74,14 @@ Data flows one way: components read from `useHQ` (zustand) and change data only 
 - `transport.ts`: `fetch` to `/rest/v1/rpc/*`. New `sb_publishable_` keys go in the `apikey` header only; legacy JWT keys also go in `Authorization`. `createMemoryTransport()` implements the same rules for tests.
 - `config.ts`: URL and publishable key are committed on purpose (public by design). Override with `VITE_SYNC_URL` / `VITE_SYNC_KEY`.
 
+### Live Claude function
+
+`supabase/functions/phq-ai/` on project `kpodgifoehudokciwlwq`, deployed 2026-10-25 through the Supabase connector as version 1, `verify_jwt: false` (the `x-phq-access` code is the gate). Files: `index.ts` (Deno entry, `npm:@anthropic-ai/sdk@0.133.0`), `handler.ts` (all request logic, runtime-free, tested), `../_shared/ai-jobs.ts`.
+
+- Verified after deploy: POST `{"job":"ping"}` → 503 `not_configured` naming both missing secrets; preflight from `https://crazyblunt.github.io` → 204 with CORS; a foreign `Origin` → 403. Settings › Claude › Test connection shows the same.
+- Secrets the user sets in the dashboard: `ANTHROPIC_API_KEY`, `PHQ_AI_ACCESS_CODE`, optional `PHQ_AI_MODEL` (default `claude-opus-5-5`). None are set yet, so **no real Claude call has been tested**. The first live request will be the first check of the SDK call shape (`beta.messages.create` with `output_config: {effort, format: {type: 'json_schema'}}` and, for Opus/Sonnet/Fable, `fallbacks: 'default'` + beta `server-side-fallback-2026-07-01`).
+- Redeploy with the connector (`deploy_edge_function`, same three files) or `supabase functions deploy phq-ai --no-verify-jwt`.
+
 ### Gotchas
 
 - **Never destroy user data.** Migrations are additive: `acc:*` keys and the old `phq:*` localStorage copy stay forever. Deletions must go through store actions (`removeWhere`) or `replaceWorkspace` so sync records tombstones. `applyRemoteChanges` intentionally doesn't log activity or create tombstones.
@@ -91,18 +105,26 @@ Data flows one way: components read from `useHQ` (zustand) and change data only 
   - IndexedDB tests import `fake-indexeddb/auto`.
   - jsdom lacks `showModal` and `scrollIntoView`; the code guards both.
   - Don't assert that short strings are absent from ciphertext, since random base64 can contain them.
-  - In the dev server console, `window.__hq` exposes the live stores. Dynamically importing `/src/...` can return a stale module copy after hot reload.
+  - In the dev server console, `window.__hq` exposes the live stores. Dynamically importing `/src/...` can return a stale module copy after hot reload. After changing `SECTIONS` or other module-level constants, reload the page fully.
+  - jsdom has no `matchMedia` (use `mockMatchMedia` from `src/test/helpers.ts`; components treat it as narrow) and doesn't close `<dialog>` on Escape (click Close instead).
+  - `renderApp` in `app.test.tsx` resets UI-store fields that leak between tests (`myDayCustomize`, `shortcutsOpen`, `askClaude`). Add new open/closed UI flags there.
+- **Commands and shortcuts live in one place each.** Add a command to `useAppCommands` (stable id), then reference that id from `SHORTCUTS` or `MENUS`. Menus skip ids that don't exist.
+- **Where links are stored:** idea↔idea uses `relatedIds`, note↔task uses the note's `taskIds` (whichever side adds it), everything else uses `itemLinks` on the item it was added from. Go through `linkItems`/`unlinkItems`. Editor drafts must not include link fields (the note editor's autosave would overwrite links the panel saved).
+- **`handler.ts` and `_shared/ai-jobs.ts` must stay free of Deno globals and imports** (ai-jobs is bundled into the app too). Relative imports there use `.ts` extensions for Deno; `tsconfig.json` has `allowImportingTsExtensions` and includes those files, but not `index.ts`.
+- **Wide content in a CSS grid column:** an implicit `auto` column grows to its widest child, even one inside an `overflow-x-auto` box. Use `grid-cols-1` (`minmax(0, 1fr)`) for single-column grids that contain tables (Settings had this bug at 375px).
 - **No linter is configured.** A few `// eslint-disable-line` comments exist anyway.
 
 ### Unfinished / next steps
 
-- **User to-dos:** import the backup from the Claude artifact into the hosted app (Settings › Data), then turn sync on (Mac first, then phone with the code).
-- **Idea reminders don't surface anywhere.** `Idea.remindOn` only shows as a label on the idea card. It should also appear on My Day and the calendar (`calendarItems` / Deadlines widget).
+- **This branch:** merge `feature/myday-grid-organize-claude` into `main` and push (that deploys the hosted app). Waiting on the user's OK.
+- **User to-dos:** import the backup from the Claude artifact into the hosted app (Settings › Data), then turn sync on (Mac first, then phone with the code). For live Claude (optional): add the two secrets and the access code (README › Set up live mode).
+- **Live Claude is untested end to end** until a key exists. Check the first real request of each job; adjust `index.ts` if the API rejects a parameter.
 - **No notifications while the app is closed.** That needs web push, which needs a server. It would build on the Supabase project.
-- **Settings sync wholesale,** including theme, density, and widget layout. Per-device appearance would need those fields excluded from the `settings:settings` record.
-- **Sync has no "change my code" / key rotation.** "Delete cloud copy" doesn't notify other devices; they'll re-upload their next changes unless turned off. There's no conflict view (last write wins silently).
-- **Not verified on real hardware:** the Install button flow; the iOS standalone app (especially the backup download, which may need Copy JSON instead); storage persistence being granted when installed.
-- **Small UI issue:** the Notes list category filter is cramped and truncates "All categories".
-- **Not built:** recurring tasks/events, undo, calendar drag-to-reschedule, richer note markdown (bold, italics, code blocks), attachments.
+- **Settings sync wholesale,** including theme, density, widget layout, and saved views. Per-device appearance would need those fields excluded from the `settings:settings` record.
+- **Sync has no "change my code" / key rotation.** "Delete cloud copy" doesn't notify other devices; they'll re-upload their next changes unless turned off. There's no conflict view (last write wins silently, per record, so concurrent edits to the same item from two devices can drop one side, including `itemLinks`).
+- **Older copies drop `itemLinks`** when they save an item (the Claude artifact, or a tab that hasn't reloaded).
+- **Not verified on real hardware:** the Install button flow; the iOS standalone app (especially the backup download, which may need Copy JSON instead); storage persistence being granted when installed; touch dragging on a tablet wide enough for the grid.
+- **Command bar focus:** the search box gets focus one tick after the bar opens; keystrokes sent within that tick (only automation does this) land elsewhere.
+- **Not built:** recurring tasks/events, general undo (only suggestion batches can be undone), calendar drag-to-reschedule, richer note markdown (bold, italics, code blocks), attachments, `[[ ]]` mentions, per-widget settings.
 - **The Claude artifact copy is outdated.** Republish it (same URL) or tell the user it's retired.
-- **Bundle size:** a single 550 KB file (158 KB gzipped) with no code splitting. Fine for now.
+- **Bundle size:** a single 658 KB file (191 KB gzipped) with no code splitting. Fine for now.
