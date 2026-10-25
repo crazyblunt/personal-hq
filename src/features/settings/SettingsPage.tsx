@@ -34,7 +34,7 @@ export function SettingsPage() {
   return (
     <>
       <PageHeader title="Settings" icon={Settings} description="Appearance, preferences, dashboard layout, and your data" />
-      <div className="grid items-start gap-2 xl:grid-cols-2">
+      <div className="grid grid-cols-1 items-start gap-2 xl:grid-cols-2">
         <div className="flex flex-col gap-2">
           <Panel title="Appearance" icon={<Palette />}>
             <div className="flex flex-col gap-3 p-2">
