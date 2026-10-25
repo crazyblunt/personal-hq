@@ -397,7 +397,10 @@ describe('Undo for applied suggestions', () => {
 });
 
 describe('Ask Claude', () => {
-  afterEach(() => writeAccessCode(''));
+  afterEach(() => {
+    writeAccessCode('');
+    vi.unstubAllGlobals();
+  });
 
   const organizeReply = (ideaId: string) =>
     JSON.stringify({
@@ -458,6 +461,35 @@ describe('Ask Claude', () => {
     });
     expect(await within(openDialog()).findByRole('button', { name: 'Send to Anthropic' })).toBeInTheDocument();
     expect(within(openDialog()).getByLabelText('Data to share')).toHaveTextContent('Essay');
+  });
+
+  it('a live send is checked against what it sent, even after an earlier Copy prompt', async () => {
+    writeAccessCode('CODE');
+    const { user } = await renderApp();
+    let gamma!: Idea;
+    act(() => {
+      createIdea({ body: 'Alpha idea' });
+      gamma = createIdea({ body: 'Gamma idea' });
+      openAskClaude({ job: 'organize' });
+    });
+    const dlg = () => within(openDialog());
+    await user.click(dlg().getByRole('checkbox', { name: 'Include Gamma idea' }));
+    await user.click(dlg().getByRole('button', { name: 'Next' }));
+    await user.click(dlg().getByRole('button', { name: 'Copy prompt' }));
+    await user.click(dlg().getByRole('button', { name: 'Back' }));
+    await user.click(dlg().getByRole('button', { name: 'Back' }));
+    await user.click(dlg().getByRole('checkbox', { name: 'Include Gamma idea' }));
+    await user.click(dlg().getByRole('button', { name: 'Next' }));
+    const result = { suggestions: [{ ideaId: gamma.id, reason: 'Garden', actions: [{ type: 'add_tags', tags: ['garden'], category: null, projectId: null, targetKind: null, targetId: null, to: null }] }] };
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ result, model: 'claude-opus-5-5', usage: { input_tokens: 120, output_tokens: 40 } }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await user.click(dlg().getByRole('button', { name: 'Send to Anthropic' }));
+    await waitFor(() => expect(dlg().getByRole('button', { name: 'Apply selected' })).toBeInTheDocument());
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).input.ideas.map((i: { title: string; body: string }) => i.body)).toContain('Gamma idea');
+    expect(dlg().queryByText(/rejected/)).toBeNull();
+    expect(dlg().getByText(/Model claude-opus-5-5/)).toBeInTheDocument();
+    await user.click(dlg().getByRole('button', { name: 'Apply selected' }));
+    expect(useHQ.getState().ideas.find((i) => i.id === gamma.id)!.tags).toEqual(['garden']);
   });
 });
 

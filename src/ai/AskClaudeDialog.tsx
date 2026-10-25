@@ -109,12 +109,13 @@ export function AskClaudeDialog() {
 
   if (!req || !job) return null;
   const def = AI_JOBS[job];
-  // The reply is checked against the data that was actually shared, not data that changed since.
+  // What was last copied as a prompt (or, before any copy, what the preview shows).
   const shared = frozen ?? ctx;
 
-  const showReview = (raw: unknown, live: LiveResult | null) => {
-    if (!shared) return;
-    const v = validateReply(shared, raw, today);
+  /** Validates a reply against `sent`: exactly the data that went out with this request. */
+  const showReview = (raw: unknown, live: LiveResult | null, sent: JobContext | null) => {
+    if (!sent) return;
+    const v = validateReply(sent, raw, today);
     if (!v.ok) {
       setError(v.error);
       return;
@@ -137,12 +138,13 @@ export function AskClaudeDialog() {
 
   const send = async () => {
     if (!ctx) return;
-    setFrozen(ctx);
+    const sent = ctx;
+    setFrozen(sent);
     setStep('sending');
     setError(null);
     try {
-      const res = await runLive(job, ctx.input);
-      showReview(res.result, res);
+      const res = await runLive(job, sent.input);
+      showReview(res.result, res, sent);
       // showReview leaves the step alone on a bad reply; go back to the preview with the error.
       setStep((s) => (s === 'sending' ? 'preview' : s));
     } catch (e) {
@@ -187,7 +189,7 @@ export function AskClaudeDialog() {
           disabled={!pasted.trim()}
           onClick={() => {
             try {
-              showReview(extractJson(pasted), null);
+              showReview(extractJson(pasted), null, shared);
             } catch (e) {
               setError(e instanceof Error ? e.message : 'Not valid JSON');
             }
