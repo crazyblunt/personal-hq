@@ -1,11 +1,12 @@
 import { AI_JOBS } from '../_shared/ai-jobs.ts';
 import { handle, safeEqual, type CallClaude } from './handler.ts';
 
-const env = { apiKey: 'k', accessCode: 'secret-code', model: 'claude-opus-5-5' };
+const CODE = 'secret-code-0123456789ab';
+const env = { apiKey: 'k', accessCode: CODE, model: 'claude-opus-5-5' };
 const req = (body: unknown, headers: Record<string, string> = {}, method = 'POST') =>
   new Request('https://x.supabase.co/functions/v1/phq-ai', {
     method,
-    headers: { 'content-type': 'application/json', origin: 'https://crazyblunt.github.io', 'x-phq-access': 'secret-code', ...headers },
+    headers: { 'content-type': 'application/json', origin: 'https://crazyblunt.github.io', 'x-phq-access': CODE, ...headers },
     body: method === 'POST' ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined,
   });
 const never: CallClaude = async () => {
@@ -77,4 +78,11 @@ describe('phq-ai handler', () => {
     expect(safeEqual('abc', 'abcd')).toBe(false);
     expect(safeEqual('', '')).toBe(false);
   });
+
+  it('refuses to run with a short access code, which could be guessed', async () => {
+    const r = await handle(req({ job: 'ping' }, { 'x-phq-access': '1234' }), { ...env, accessCode: '1234' }, never);
+    expect(r.status).toBe(503);
+    expect(await r.json()).toEqual({ error: 'not_configured', missing: ['PHQ_AI_ACCESS_CODE (at least 20 characters)'] });
+  });
 });
+

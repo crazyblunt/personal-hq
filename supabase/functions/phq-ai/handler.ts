@@ -11,6 +11,9 @@
  */
 import { AI_JOB_IDS, AI_JOBS, AI_LIMITS, type AiJobId } from '../_shared/ai-jobs.ts';
 
+/** Settings › Claude generates 32-character codes; anything under this is refused. */
+export const MIN_CODE_LENGTH = 20;
+
 export const ALLOWED_ORIGINS = ['https://crazyblunt.github.io', 'http://localhost:5173', 'http://localhost:4173'];
 
 export interface HandlerEnv {
@@ -60,6 +63,8 @@ export async function handle(req: Request, env: HandlerEnv, callClaude: CallClau
   if (req.method !== 'POST') return json(405, { error: 'method_not_allowed' });
 
   if (!env.accessCode) return json(503, { error: 'not_configured', missing: ['PHQ_AI_ACCESS_CODE', ...(env.apiKey ? [] : ['ANTHROPIC_API_KEY'])] });
+  // The function URL is public, so a short code could be guessed and used to spend API credit.
+  if (env.accessCode.length < MIN_CODE_LENGTH) return json(503, { error: 'not_configured', missing: [`PHQ_AI_ACCESS_CODE (at least ${MIN_CODE_LENGTH} characters)`] });
   if (!safeEqual(req.headers.get('x-phq-access') ?? '', env.accessCode)) return json(401, { error: 'unauthorized' });
 
   const declared = Number(req.headers.get('content-length') ?? 0);

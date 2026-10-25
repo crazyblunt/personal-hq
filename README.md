@@ -159,7 +159,7 @@ Live mode costs money only for the Claude API calls themselves; the Supabase fun
 1. In the Claude Console, create an API key, add credits, and set a monthly spending limit.
 2. In the Supabase dashboard (project `personal-hq`), open Edge Functions › Secrets and add:
    - `ANTHROPIC_API_KEY`: the key from step 1
-   - `PHQ_AI_ACCESS_CODE`: a long random code (Settings › Claude › **Generate a code** makes one)
+   - `PHQ_AI_ACCESS_CODE`: a long random code, at least 20 characters (Settings › Claude › **Generate a code** makes a 32-character one)
    - optionally `PHQ_AI_MODEL`: defaults to `claude-opus-5-5`; `claude-haiku-5-5` costs far less
 3. On each device, paste the same access code into Settings › Claude, press **Save**, then **Test connection**. It never calls Claude and costs nothing.
 
