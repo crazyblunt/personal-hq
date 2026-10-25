@@ -83,4 +83,21 @@ describe('review rows and applying Claude changes', () => {
     expect(useHQ.getState().projects.map((p) => p.name)).toEqual(['Start a reading group']);
     expect(useHQ.getState().ideas[0].converted).toHaveLength(1);
   });
+
+  it('flags a task that repeats another task in the same reply', () => {
+    const task = (title: string) => ({ type: 'create_task' as const, title, description: '', priority: 'medium' as const, dueDate: null, projectId: null, milestoneId: null, sourceNoteId: null });
+    const rows = buildReviewRows([task('Write intro'), task('write  intro.'), task('Write outro')], useHQ.getState(), today);
+    expect(rows.map((r) => [r.duplicate, r.checked])).toEqual([
+      [false, true],
+      [true, false],
+      [false, true],
+    ]);
+  });
+
+  it('flags a second Claude summary so it is not stacked by default', () => {
+    const n = createNote({ title: 'L', body: '## Summary (Claude)\n\nOld\n\n---\n\nOriginal' });
+    const rows = buildReviewRows([{ type: 'insert_summary', noteId: n.id, text: '## Summary (Claude)\n\nNew' }], useHQ.getState(), today);
+    expect(rows[0]).toMatchObject({ duplicate: true, checked: false });
+  });
 });
+

@@ -34,6 +34,9 @@ export interface Rejected {
 
 export type ValidationResult = { ok: true; changes: AiChange[]; rejected: Rejected[]; message: string | null } | { ok: false; error: string };
 
+/** Heading at the top of every summary Claude adds to a note. */
+export const SUMMARY_HEADING = '## Summary (Claude)';
+
 const CAP = { reason: 200, category: 40, keyPoint: 200, title: 140, description: 2000, focus: 400, planReason: 160, tagsPerAction: 5 } as const;
 
 type Obj = Record<string, unknown>;
@@ -118,7 +121,7 @@ export function validateReply(ctx: JobContext, raw: unknown, today: DateKey): Va
       if (points.length > AI_LIMITS.keyPoints) reject('Over the limit', `Only ${AI_LIMITS.keyPoints} key points are kept`);
       if (summary) {
         const bullets = points.slice(0, AI_LIMITS.keyPoints).map((p) => `- ${p}`);
-        changes.push({ type: 'insert_summary', noteId: ctx.noteId, text: ['## Summary (Claude)', summary, ...(bullets.length ? [bullets.join('\n')] : [])].join('\n\n') });
+        changes.push({ type: 'insert_summary', noteId: ctx.noteId, text: [SUMMARY_HEADING, summary, ...(bullets.length ? [bullets.join('\n')] : [])].join('\n\n') });
       } else reject('Missing value', 'The summary was empty');
       let kept = 0;
       for (const item of raw.actionItems) {

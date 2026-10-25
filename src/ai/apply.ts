@@ -12,7 +12,7 @@ import { ideaTitle, noteTitle } from '../data/titles';
 import type { DateKey, WorkspaceData } from '../data/types';
 import { todayKey } from '../lib/dates';
 import { uniqueStrings } from '../lib/util';
-import type { AiChange } from './validate';
+import { SUMMARY_HEADING, type AiChange } from './validate';
 
 export interface ReviewRow {
   key: string;
@@ -43,6 +43,8 @@ export function buildReviewRows(changes: AiChange[], ws: WorkspaceData, today: D
   const index = buildLinkIndex(ws);
   const projectName = (id: string | null) => ws.projects.find((p) => p.id === id)?.name ?? '(none)';
   const rows: ReviewRow[] = [];
+  /** Normalized title + project of every task proposed so far in this reply. */
+  const proposed = new Set<string>();
   changes.forEach((c, i) => {
     const row = (label: string, before: string | null, after: string, reason = '', duplicate = false) => rows.push({ key: `${i}:${c.type}`, change: c, label, before, after, reason, duplicate, checked: !duplicate });
     switch (c.type) {
@@ -83,12 +85,17 @@ export function buildReviewRows(changes: AiChange[], ws: WorkspaceData, today: D
       case 'insert_summary': {
         const note = ws.notes.find((x) => x.id === c.noteId);
         if (!note) return;
-        row(`Summary · ${noteTitle(note)}`, '(note text stays below, unchanged)', c.text);
+        // A summary that's already there would stack; leave the second one unticked.
+        row(`Summary · ${noteTitle(note)}`, '(note text stays below, unchanged)', c.text, '', note.body.trimStart().startsWith(SUMMARY_HEADING));
         return;
       }
-      case 'create_task':
-        row(c.projectId ? `New task · ${projectName(c.projectId)}` : 'New task', null, c.dueDate ? `${c.title} (due ${c.dueDate})` : c.title, '', isDuplicateTask(c.title, c.projectId, ws, today));
+      case 'create_task': {
+        const key = `${c.projectId ?? ''}\u0000${normTitle(c.title)}`;
+        const repeat = proposed.has(key);
+        proposed.add(key);
+        row(c.projectId ? `New task · ${projectName(c.projectId)}` : 'New task', null, c.dueDate ? `${c.title} (due ${c.dueDate})` : c.title, '', repeat || isDuplicateTask(c.title, c.projectId, ws, today));
         return;
+      }
       case 'add_to_myday': {
         const task = ws.tasks.find((x) => x.id === c.taskId);
         if (!task || task.myDay === today) return;
