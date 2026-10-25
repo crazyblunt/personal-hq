@@ -9,6 +9,7 @@
  */
 import { normalizeCollection, normalizeSettings } from '../data/normalize';
 import type { RemoteChange } from '../data/store';
+import { keepFieldsOlderCopiesDrop, keepSettingsOlderCopiesDrop } from '../data/compat';
 import { COLLECTIONS, type CollectionName, type Settings, type WorkspaceData } from '../data/types';
 import { decryptJson, encryptJson, rowName, type SyncKeys } from './crypto';
 import type { SyncRow, SyncTransport } from './transport';
@@ -121,7 +122,7 @@ export async function syncOnce(d: SyncDeps): Promise<SyncResult> {
       const { collection, id } = splitKey(p.k);
       if (p.k === SETTINGS_KEY) {
         if (p.d) continue;
-        settings = { ...normalizeSettings(p.r), updatedAt: remoteStamp };
+        settings = { ...keepSettingsOlderCopiesDrop(p.r, normalizeSettings(p.r), d.getWorkspace().settings), updatedAt: remoteStamp };
       } else if (isCollection(collection)) {
         if (p.d) {
           if (mine) changes.push({ collection, id, record: null });
@@ -131,7 +132,7 @@ export async function syncOnce(d: SyncDeps): Promise<SyncResult> {
             result.skipped++;
             continue;
           }
-          changes.push({ collection, id, record: n.items[0] });
+          changes.push({ collection, id, record: keepFieldsOlderCopiesDrop(collection, p.r, n.items[0], mine?.record) });
           delete state.tombstones[p.k];
         }
       } else {

@@ -98,7 +98,7 @@ Before any replace, restore, or *Delete all data*, a safety copy of the current 
 
 **Kept on each device only.** The undo history for applied suggestions (last 10) and the Claude access code are stored on the device and are never synced or included in backups.
 
-**Older copies.** Links between items are a newer field. If you edit an item in an older copy of the app (the Claude artifact, or a tab that hasn't reloaded since an update), that copy doesn't know about the item's links and drops them when it saves.
+**Older copies.** Links between items, project tags, saved Explorer views, and the My Day grid layout are newer. A copy of the app that hasn't updated yet (the Claude artifact, or a tab or installed app that hasn't reloaded) doesn't show them. When an edit from such a copy arrives through sync, this device keeps its own links, tags, views, and layout. A backup exported from an older copy doesn't contain them, so importing it with *Add new and update older copies* or *Replace everything* drops them for the records it updates.
 
 **Damaged or old data.** If stored data can't be parsed, it is copied to a recovery slot (Settings › Data › Recovery) instead of being thrown away. Data saved by a newer version of the app is never overwritten.
 
@@ -163,7 +163,7 @@ Live mode costs money only for the Claude API calls themselves; the Supabase fun
    - optionally `PHQ_AI_MODEL`: defaults to `claude-opus-5-5`; `claude-haiku-5-5` costs far less
 3. On each device, paste the same access code into Settings › Claude, press **Save**, then **Test connection**. It never calls Claude and costs nothing.
 
-The function `phq-ai` (`supabase/functions/phq-ai/`) is already deployed to the project. If it ever needs redeploying: `supabase functions deploy phq-ai --no-verify-jwt`. It accepts only the four jobs above, builds the instructions itself, checks the access code, limits request size, and never logs what you send. Live requests are **not** end-to-end encrypted: Anthropic receives the data shown in the preview. The API key stays on the server; the app only has the access code. Live mode isn't available inside the Claude artifact, which can't connect to other servers.
+The function `phq-ai` (`supabase/functions/phq-ai/`) is deployed to the project and answers Test connection, but no request has reached Claude yet: the first real one happens after you add the API key, so check the result of your first live request. If it ever needs redeploying: `supabase functions deploy phq-ai --no-verify-jwt`. It accepts only the four jobs above, builds the instructions itself, checks the access code, limits request size, and never logs what you send. Live requests are **not** end-to-end encrypted: Anthropic receives the data shown in the preview. The API key stays on the server; the app only has the access code. Live mode isn't available inside the Claude artifact, which can't connect to other servers.
 
 ### Other privacy notes
 

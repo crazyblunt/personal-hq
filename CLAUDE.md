@@ -42,7 +42,7 @@ Data flows one way: components read from `useHQ` (zustand) and change data only 
 | Legacy | `src/data/legacy.ts` | One-time migration from Agent Command Center's `acc:*` localStorage keys. Never modifies or deletes them. |
 | Backup | `src/data/backup.ts`, `src/app/backupActions.ts` | Export JSON; import with preview and three modes (`add` default, `update`, `replace`). Accepts Agent Command Center exports. |
 | Safety | `src/app/safety.ts` | `navigator.storage.persist()`, storage estimate, daily snapshots (IndexedDB only), backup reminder timing. |
-| Sync | `src/sync/` | See below. |
+| Sync | `src/sync/`, `src/data/compat.ts` | See below. `compat.ts` keeps fields an older copy leaves out of the records it pushes. |
 | App state | `src/app/` | `router.ts` (hash tokens), `ui.ts` (open editors, dialogs, toasts with an optional action button, recent items, cross-page requests), `clock.ts` (one shared ticker), `focus.ts`, `media.ts` (`useMediaQuery`), `deviceStorage.ts` (per-device prefs under `phq:device:*`, not backed up or synced; includes `ai-code`). |
 | UI | `src/shell/`, `src/editors/`, `src/features/<section>/`, `src/ui/` | Shell = title bar, sidebar, status bar, command bar. Editors are modal windows opened via `openEditor()` and rendered by `EditorHost`. Shared controls in `src/ui/`. |
 | Organizer | `src/organize/` | Local keyword rules, word overlap, fixed checklist templates. Labeled "local suggestions" everywhere. `provider.ts` lists `SUGGESTION_SOURCES` (local, Claude copy/paste, Claude live) for Settings › Claude. |
@@ -108,6 +108,7 @@ Data flows one way: components read from `useHQ` (zustand) and change data only 
   - In the dev server console, `window.__hq` exposes the live stores. Dynamically importing `/src/...` can return a stale module copy after hot reload. After changing `SECTIONS` or other module-level constants, reload the page fully.
   - jsdom has no `matchMedia` (use `mockMatchMedia` from `src/test/helpers.ts`; components treat it as narrow) and doesn't close `<dialog>` on Escape (click Close instead).
   - `renderApp` in `app.test.tsx` resets UI-store fields that leak between tests (`myDayCustomize`, `shortcutsOpen`, `askClaude`). Add new open/closed UI flags there.
+- **New record or settings fields:** add them to `NEWER_FIELDS` (records) or `keepSettingsOlderCopiesDrop` (settings) in `src/data/compat.ts`, or a not-yet-updated device's sync push will wipe them on every other device.
 - **Commands and shortcuts live in one place each.** Add a command to `useAppCommands` (stable id), then reference that id from `SHORTCUTS` or `MENUS`. Menus skip ids that don't exist.
 - **Where links are stored:** idea↔idea uses `relatedIds`, note↔task uses the note's `taskIds` (whichever side adds it), everything else uses `itemLinks` on the item it was added from. Go through `linkItems`/`unlinkItems`. Editor drafts must not include link fields (the note editor's autosave would overwrite links the panel saved).
 - **`handler.ts` and `_shared/ai-jobs.ts` must stay free of Deno globals and imports** (ai-jobs is bundled into the app too). Relative imports there use `.ts` extensions for Deno; `tsconfig.json` has `allowImportingTsExtensions` and includes those files, but not `index.ts`.
@@ -122,7 +123,7 @@ Data flows one way: components read from `useHQ` (zustand) and change data only 
 - **No notifications while the app is closed.** That needs web push, which needs a server. It would build on the Supabase project.
 - **Settings sync wholesale,** including theme, density, widget layout, and saved views. Per-device appearance would need those fields excluded from the `settings:settings` record.
 - **Sync has no "change my code" / key rotation.** "Delete cloud copy" doesn't notify other devices; they'll re-upload their next changes unless turned off. There's no conflict view (last write wins silently, per record, so concurrent edits to the same item from two devices can drop one side, including `itemLinks`).
-- **Older copies drop `itemLinks`** when they save an item (the Claude artifact, or a tab that hasn't reloaded).
+- **Older copies and backups:** sync keeps this device's `itemLinks`, project `tags`, `views`, and widget positions when an older copy's record (which lacks those keys) arrives (`src/data/compat.ts`). Importing a backup exported by an older copy in update/replace mode still drops them for the records it updates.
 - **Not verified on real hardware:** the Install button flow; the iOS standalone app (especially the backup download, which may need Copy JSON instead); storage persistence being granted when installed; touch dragging on a tablet wide enough for the grid.
 - **Command bar focus:** the search box gets focus one tick after the bar opens; keystrokes sent within that tick (only automation does this) land elsewhere.
 - **Not built:** recurring tasks/events, general undo (only suggestion batches can be undone), calendar drag-to-reschedule, richer note markdown (bold, italics, code blocks), attachments, `[[ ]]` mentions, per-widget settings.
